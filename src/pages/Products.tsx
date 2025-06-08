@@ -5,7 +5,7 @@ import {
   Search, 
   Filter, 
   X, 
-  Image as ImageIcon,
+  ImageIcon,
   Package,
   Tag,
   DollarSign,
@@ -17,10 +17,16 @@ import {
   Edit2,
   Trash2,
   MoreVertical,
-  FilterX
+  FilterX,
+  ArrowUpDown,
+  IndianRupee
 } from 'lucide-react';
 import Select, { MultiValue, ActionMeta } from 'react-select';
 import makeAnimated from 'react-select/animated';
+import { useProducts } from '../features/products/hooks/useProducts';
+import type { Product } from '../features/products/types';
+import { useCreateProduct } from '../features/products/hooks/useCreateProduct';
+import { toast } from 'react-hot-toast';
 
 // Types
 type ProductModel = {
@@ -39,20 +45,6 @@ type ProductFeature = {
   id: string;
   name: string;
   createdBy: string;
-};
-
-type Product = {
-  id: string;
-  image: string;
-  title: string;
-  description: string;
-  model: string;
-  type: string;
-  features: string[]; // Array of feature IDs
-  price: number;
-  warranty: number;
-  createdBy: string;
-  createdAt: Date;
 };
 
 // Mock data for product options
@@ -120,12 +112,11 @@ function Products() {
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
-  const [warrantyRange, setWarrantyRange] = useState<[number, number]>([0, 10]);
-  
-  // State for product form
-  const [productImage, setProductImage] = useState<File | null>(null);
+
+  // State for product form inputs
+  const [productImageFile, setProductImageFile] = useState<File | null>(null);
+  const [productImageFilename, setProductImageFilename] = useState<string>(''); // Stores the filename from successful upload
   const [productTitle, setProductTitle] = useState('');
-  const [productDescription, setProductDescription] = useState('');
   const [productModel, setProductModel] = useState('');
   const [productType, setProductType] = useState('');
   const [productFeatures, setProductFeatures] = useState<string[]>([]);
@@ -137,14 +128,28 @@ function Products() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(null);
 
-  // Add new state for existing image URL
-  const [existingImageUrl, setExistingImageUrl] = useState<string>('');
-
+  // State for pagination and sorting
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState('title');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
   const animatedComponents = makeAnimated();
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { createProduct, uploadImageMutation, isPending: isCreatingProduct } = useCreateProduct();
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProductImage(e.target.files[0]);
+      const file = e.target.files[0];
+      setProductImageFile(file); // Set the file for preview
+
+      try {
+        const uploadResult = await uploadImageMutation.mutateAsync(file);
+        setProductImageFilename(uploadResult.filename); // Store the filename from the API response
+      } catch (error) {
+        console.error('Image upload failed during selection:', error);
+        setProductImageFile(null); // Clear the file if upload fails
+        setProductImageFilename('');
+      }
     }
   };
 
@@ -178,38 +183,45 @@ function Products() {
     setSelectedOptionType(null);
   };
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (!productTitle.trim() || !productModel || !productType || !productPrice || !productWarranty) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    if (uploadImageMutation.isPending) { // If an image is currently uploading
+      toast.error('Please wait for the image to finish uploading.');
+      return;
+    }
+    if (productImageFile && !productImageFilename) { // If a file was selected but not yet uploaded/filename is missing
+      toast.error('Image upload failed or is pending. Please re-upload or select a valid image.');
       return;
     }
 
-    const newProduct: Product = {
-      id: (Math.max(...products.map(p => parseInt(p.id)), 0) + 1).toString(),
-      image: productImage ? URL.createObjectURL(productImage) : '',
-      title: productTitle.trim(),
-      description: productDescription.trim(),
-      model: productModel,
-      type: productType,
-      features: productFeatures,
-      price: parseFloat(productPrice),
-      warranty: parseInt(productWarranty),
-      createdBy: user?.id || 'admin',
-      createdAt: new Date()
-    };
+    try {
+      await createProduct({
+        title: productTitle.trim(),
+        model: productModel,
+        type: productType,
+        features: productFeatures.join(','), // Convert array to comma-separated string
+        price: parseFloat(productPrice),
+        warranty: productWarranty,
+        category: '6845333f5a9d818c74c66db8', // Using the category ID from your example
+      }, productImageFile || undefined);
 
-    setProducts([...products, newProduct]);
-    setIsFormOpen(false);
-    
-    // Reset form
-    setProductImage(null);
-    setExistingImageUrl(''); // Reset existing image URL
-    setProductTitle('');
-    setProductDescription('');
-    setProductModel('');
-    setProductType('');
-    setProductFeatures([]);
-    setProductPrice('');
-    setProductWarranty('');
+      // Reset form
+      setIsFormOpen(false);
+      setProductImageFile(null);
+      setProductImageFilename('');
+      setProductTitle('');
+      setProductModel('');
+      setProductType('');
+      setProductFeatures([]);
+      setProductPrice('');
+      setProductWarranty('');
+    } catch (error) {
+      // Error handling is done in the mutation callbacks
+      console.error('Failed to create product:', error);
+    }
   };
 
   const handleFeatureChange = (
@@ -228,15 +240,14 @@ function Products() {
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    setProductImage(null); // Reset new image upload
-    setExistingImageUrl(product.image); // Set existing image URL
+    setProductImageFile(null); // Reset new image upload
+    setProductImageFilename(product.productImage); // Set existing image filename
     setProductTitle(product.title);
-    setProductDescription(product.description);
     setProductModel(product.model);
     setProductType(product.type);
-    setProductFeatures(product.features);
+    setProductFeatures(product.features); // Assuming features is string[] from API
     setProductPrice(product.price.toString());
-    setProductWarranty(product.warranty.toString());
+    setProductWarranty(product.warranty); // Keep as string
     setIsFormOpen(true);
   };
 
@@ -247,7 +258,10 @@ function Products() {
 
   const confirmDelete = () => {
     if (productToDelete) {
-      setProducts(products.filter(p => p.id !== productToDelete.id));
+      // This part will be handled by the delete hook (not implemented yet for products)
+      // For now, it will simply remove from local state if it was mock data
+      // For actual API, this will be a mutation call
+      // setProducts(products.filter(p => p._id !== productToDelete._id)); // will use _id
       setIsDeleteModalOpen(false);
       setProductToDelete(null);
     }
@@ -258,27 +272,29 @@ function Products() {
       return;
     }
 
+    // This is placeholder logic, will be replaced with an update API call
     const updatedProduct: Product = {
       ...editingProduct,
-      image: productImage ? URL.createObjectURL(productImage) : existingImageUrl, // Use new image or keep existing
+      productImage: productImageFilename || editingProduct.productImage, // Use new image or keep existing
       title: productTitle.trim(),
-      description: productDescription.trim(),
       model: productModel,
       type: productType,
-      features: productFeatures,
+      features: productFeatures, // Assuming features is string[] from API
       price: parseFloat(productPrice),
-      warranty: parseInt(productWarranty),
+      warranty: productWarranty, // Keep as string
+      category: editingProduct.category, // Assuming category is present in API Product type
+      createdAt: editingProduct.createdAt,
+      updatedAt: editingProduct.updatedAt,
     };
 
-    setProducts(products.map(p => p.id === editingProduct.id ? updatedProduct : p));
+    // setProducts(products.map(p => p._id === editingProduct._id ? updatedProduct : p)); // will use _id
     setIsFormOpen(false);
     setEditingProduct(null);
     
     // Reset form
-    setProductImage(null);
-    setExistingImageUrl(''); // Reset existing image URL
+    setProductImageFile(null);
+    setProductImageFilename('');
     setProductTitle('');
-    setProductDescription('');
     setProductModel('');
     setProductType('');
     setProductFeatures([]);
@@ -293,24 +309,96 @@ function Products() {
   const handleCloseModal = () => {
     setIsFormOpen(false);
     setEditingProduct(null);
-    setProductImage(null);
-    setExistingImageUrl(''); // Reset existing image URL
+    setProductImageFile(null);
+    setProductImageFilename('');
+    // Reset form fields
+    setProductTitle('');
+    setProductModel('');
+    setProductType('');
+    setProductFeatures([]);
+    setProductPrice('');
+    setProductWarranty('');
   };
 
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          product.description.toLowerCase().includes(searchTerm.toLowerCase());
+                          product.model.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesModel = !selectedModel || product.model === selectedModel;
       const matchesType = !selectedType || product.type === selectedType;
       const matchesFeatures = selectedFeatures.length === 0 || 
                             selectedFeatures.every(feature => product.features.includes(feature));
       const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-      const matchesWarranty = product.warranty >= warrantyRange[0] && product.warranty <= warrantyRange[1];
       
-      return matchesSearch && matchesModel && matchesType && matchesFeatures && matchesPrice && matchesWarranty;
+      return matchesSearch && matchesModel && matchesType && matchesFeatures && matchesPrice;
     });
-  }, [products, searchTerm, selectedModel, selectedType, selectedFeatures, priceRange, warrantyRange]);
+  }, [products, searchTerm, selectedModel, selectedType, selectedFeatures, priceRange]);
+
+  const handleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortBy !== field) return null;
+    return sortOrder === 'asc' ? '↑' : '↓';
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  // Fetch products using the hook
+  const { data, isLoading, error } = useProducts({
+    page,
+    limit: 10,
+    sortBy,
+    sortOrder,
+  });
+
+  // Access products and pagination info from the fetched data
+  const productsData = data?.products || [];
+  const pagination = data?.pagination;
+
+  // Filter products based on search term (local filtering)
+  const filteredProductsData = useMemo(() => {
+    if (!searchTerm) {
+      return productsData;
+    }
+    return productsData.filter(product => 
+      product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [productsData, searchTerm]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500 text-center">
+          <h2 className="text-2xl font-bold mb-2">Error Loading Products</h2>
+          <p>Failed to load products. Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -328,111 +416,28 @@ function Products() {
       {/* Filters */}
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="relative">
+          <div className="relative col-span-full md:col-span-1">
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={products.length === 0 ? "Add products to enable search" : "Search products..."}
-              disabled={products.length === 0}
+              placeholder={productsData.length === 0 ? "Add products to enable search" : "Search products by title, model, type, or features..."}
+              disabled={productsData.length === 0}
               className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                products.length === 0 
+                productsData.length === 0 
                   ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
                   : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
               }`}
             />
             <Search className={`w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 ${
-              products.length === 0 ? 'text-gray-400' : 'text-gray-500'
+              productsData.length === 0 ? 'text-gray-400' : 'text-gray-500'
             }`} />
-          </div>
-
-          <div>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              disabled={products.length === 0}
-              className={`w-full rounded-md border h-[42px] shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                products.length === 0 
-                  ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
-                  : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-              }`}
-            >
-              <option value="">{products.length === 0 ? "No models available" : "All Models"}</option>
-              {productModels.map(model => (
-                <option key={model.id} value={model.id}>{model.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              disabled={products.length === 0}
-              className={`w-full rounded-md border h-[42px] shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                products.length === 0 
-                  ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed' 
-                  : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500'
-              }`}
-            >
-              <option value="">{products.length === 0 ? "No types available" : "All Types"}</option>
-              {productTypes.map(type => (
-                <option key={type.id} value={type.id}>{type.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className='h-[42px]'>
-            <Select
-              isMulti
-              components={animatedComponents}
-              options={availableFeatures.map(feature => ({ value: feature.id, label: feature.name }))}
-              value={selectedFeatures.map(featureId => ({ 
-                value: featureId, 
-                label: availableFeatures.find(f => f.id === featureId)?.name || featureId 
-              }))}
-              onChange={handleFeatureChange}
-              isDisabled={products.length === 0}
-              className="w-full h-[42px]"
-              placeholder={products.length === 0 ? "No features available" : "Select Features"}
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  backgroundColor: products.length === 0 ? '#F9FAFB' : 'white',
-                  borderColor: products.length === 0 ? '#E5E7EB' : state.isFocused ? '#6366F1' : '#D1D5DB',
-                  cursor: products.length === 0 ? 'not-allowed' : 'default',
-                  '&:hover': {
-                    borderColor: products.length === 0 ? '#E5E7EB' : state.isFocused ? '#6366F1' : '#D1D5DB'
-                  }
-                }),
-                placeholder: (base) => ({
-                  ...base,
-                  color: products.length === 0 ? '#9CA3AF' : '#6B7280'
-                }),
-                multiValue: (base) => ({
-                  ...base,
-                  backgroundColor: products.length === 0 ? '#F3F4F6' : '#EEF2FF'
-                }),
-                multiValueLabel: (base) => ({
-                  ...base,
-                  color: products.length === 0 ? '#9CA3AF' : '#4338CA'
-                }),
-                multiValueRemove: (base) => ({
-                  ...base,
-                  color: products.length === 0 ? '#9CA3AF' : '#4338CA',
-                  ':hover': {
-                    backgroundColor: products.length === 0 ? '#E5E7EB' : '#E0E7FF',
-                    color: products.length === 0 ? '#9CA3AF' : '#4338CA'
-                  }
-                })
-              }}
-            />
           </div>
         </div>
       </div>
 
       {/* Products List or Empty State */}
-      {products.length === 0 ? (
+      {productsData.length === 0 && !isLoading && !error ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <div className="max-w-md mx-auto">
             <div className="relative w-48 h-48 mx-auto mb-6">
@@ -441,7 +446,7 @@ function Products() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Products Added Yet</h3>
             <p className="text-gray-500 mb-6">
-              Start building your product catalog by adding your first product. You can include images, descriptions, and specifications.
+              Start building your product catalog by adding your first product. You can include product details, pricing, and specifications.
             </p>
             <button
               onClick={() => setIsFormOpen(true)}
@@ -452,7 +457,7 @@ function Products() {
             </button>
           </div>
         </div>
-      ) : filteredProducts.length === 0 ? (
+      ) : filteredProductsData.length === 0 && searchTerm ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <div className="max-w-md mx-auto">
             <div className="relative w-48 h-48 mx-auto mb-6">
@@ -461,192 +466,111 @@ function Products() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Products Found</h3>
             <p className="text-gray-500 mb-6">
-              No products match your current filter criteria. Try adjusting your filters or search terms.
+              No products match your search criteria. Try adjusting your search terms.
             </p>
-            <div className="flex flex-wrap gap-2 justify-center mb-6">
-              {searchTerm && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                  Search: {searchTerm}
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    className="ml-2 text-indigo-600 hover:text-indigo-800"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              )}
-              {selectedModel && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                  Model: {productModels.find(m => m.id === selectedModel)?.name}
-                  <button
-                    onClick={() => setSelectedModel('')}
-                    className="ml-2 text-indigo-600 hover:text-indigo-800"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              )}
-              {selectedType && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                  Type: {productTypes.find(t => t.id === selectedType)?.name}
-                  <button
-                    onClick={() => setSelectedType('')}
-                    className="ml-2 text-indigo-600 hover:text-indigo-800"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              )}
-              {selectedFeatures.length > 0 && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                  Features: {selectedFeatures.length} selected
-                  <button
-                    onClick={() => setSelectedFeatures([])}
-                    className="ml-2 text-indigo-600 hover:text-indigo-800"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              )}
-              {(priceRange[0] > 0 || priceRange[1] < 1000000) && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                  Price: ${priceRange[0]} - ${priceRange[1]}
-                  <button
-                    onClick={() => setPriceRange([0, 1000000])}
-                    className="ml-2 text-indigo-600 hover:text-indigo-800"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              )}
-              {(warrantyRange[0] > 0 || warrantyRange[1] < 10) && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                  Warranty: {warrantyRange[0]} - {warrantyRange[1]} years
-                  <button
-                    onClick={() => setWarrantyRange([0, 10])}
-                    className="ml-2 text-indigo-600 hover:text-indigo-800"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedModel('');
-                setSelectedType('');
-                setSelectedFeatures([]);
-                setPriceRange([0, 1000000]);
-                setWarrantyRange([0, 10]);
-              }}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <FilterX className="w-4 h-4 mr-2" />
-              Clear All Filters
-            </button>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <FilterX className="w-4 h-4 mr-2" />
+                Clear Search
+              </button>
+            )}
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
-                  Product
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <button
+                    onClick={() => handleSort('title')}
+                    className="group inline-flex items-center"
+                  >
+                    Title
+                    <ArrowUpDown className="ml-2 h-4 w-4 text-gray-400 group-hover:text-gray-500" />
+                    <SortIcon field="title" />
+                  </button>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                  Description
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Model
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Type
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Features
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                  Price
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <button
+                    onClick={() => handleSort('price')}
+                    className="group inline-flex items-center"
+                  >
+                    Price
+                    <IndianRupee className="ml-1 h-4 w-4 text-gray-400 group-hover:text-gray-500" />
+                    <SortIcon field="price" />
+                  </button>
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Warranty
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                  Actions
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredProducts.map(product => (
-                <tr key={product.id} className="hover:bg-gray-50 min-h-[65px]">
-                  <td className="px-6 py-4">
+              {filteredProductsData.map((product) => (
+                <tr key={product._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 flex-shrink-0">
-                        {product.image ? (
-                          <img
-                            src={product.image}
-                            alt={product.title}
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                            <ImageIcon className="h-6 w-6 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 truncate max-w-[150px]">{product.title}</div>
+                      {product.productImage && (
+                        <img
+                          src={`http://localhost:3033/uploads/${product.productImage}`}
+                          alt={product.title}
+                          className="h-10 w-10 rounded-full object-cover mr-3"
+                        />
+                      )}
+                      <div className="text-sm font-medium text-gray-900">
+                        {product.title}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-500 truncate max-w-[200px]" title={product.description}>
-                      {product.description}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {product.model}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {product.type}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="flex flex-wrap gap-1">
+                      {product.features.map((feature, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
+                        >
+                          {feature}
+                        </span>
+                      ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 truncate max-w-[120px]" title={productModels.find(m => m.id === product.model)?.name}>
-                      {productModels.find(m => m.id === product.model)?.name}
-                    </div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatPrice(product.price)}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 truncate max-w-[120px]" title={productTypes.find(t => t.id === product.type)?.name}>
-                      {productTypes.find(t => t.id === product.type)?.name}
-                    </div>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {product.warranty}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                      {product.features.map(featureId => {
-                        const feature = availableFeatures.find(f => f.id === featureId);
-                        return feature ? (
-                          <span 
-                            key={featureId} 
-                            className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs rounded-full truncate max-w-[180px]"
-                            title={feature.name}
-                          >
-                            {feature.name}
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">${product.price.toLocaleString()}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{product.warranty} years</div>
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="relative">
                       <button
-                        onClick={() => handleActionClick(product.id)}
+                        onClick={() => handleActionClick(product._id)}
                         className="text-gray-400 hover:text-gray-500 focus:outline-none"
                       >
                         <MoreVertical className="h-5 w-5" />
                       </button>
-                      {actionDropdownOpen === product.id && (
+                      {actionDropdownOpen === product._id && (
                         <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                           <div className="py-1" role="menu" aria-orientation="vertical">
                             <button
@@ -680,6 +604,29 @@ function Products() {
               ))}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {pagination && pagination.pages > 1 && (
+            <div className="flex justify-center mt-4 p-4 border-t border-gray-200">
+              <button
+                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="mx-3 py-2 text-sm text-gray-700">
+                Page {page} of {pagination.pages}
+              </span>
+              <button
+                onClick={() => setPage(prev => Math.min(pagination.pages, prev + 1))}
+                disabled={page === pagination.pages}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -707,34 +654,32 @@ function Products() {
                 </label>
                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
                   <div className="space-y-1 text-center">
-                    {productImage ? (
+                    {productImageFile ? (
                       <div className="relative">
                         <img
-                          src={URL.createObjectURL(productImage)}
+                          src={URL.createObjectURL(productImageFile)}
                           alt="Preview"
                           className="mx-auto h-32 w-32 object-cover rounded-lg"
                         />
                         <button
                           onClick={() => {
-                            setProductImage(null);
-                            if (editingProduct) {
-                              setExistingImageUrl(editingProduct.image);
-                            }
+                            setProductImageFile(null);
+                            setProductImageFilename('');
                           }}
                           className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-                    ) : existingImageUrl ? (
+                    ) : productImageFilename ? (
                       <div className="relative">
                         <img
-                          src={existingImageUrl}
+                          src={`http://localhost:3033/uploads/${productImageFilename}`}
                           alt="Current"
                           className="mx-auto h-32 w-32 object-cover rounded-lg"
                         />
                         <button
-                          onClick={() => setExistingImageUrl('')}
+                          onClick={() => setProductImageFilename('')}
                           className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200"
                         >
                           <X className="w-4 h-4" />
@@ -776,48 +721,20 @@ function Products() {
                 />
               </div>
 
-              {/* Product Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Description
-                </label>
-                <textarea
-                  value={productDescription}
-                  onChange={(e) => setProductDescription(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  placeholder="Enter product description"
-                />
-              </div>
-
               {/* Product Model */}
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Product Model
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={productModel}
                     onChange={(e) => setProductModel(e.target.value)}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  >
-                    <option value="">Select Model</option>
-                    {productModels.map(model => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
-                    ))}
-                  </select>
+                    placeholder="Enter product model"
+                  />
                 </div>
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      setSelectedOptionType('model');
-                      setIsOptionFormOpen(true);
-                    }}
-                    className="mt-6 px-3 py-2 text-sm text-indigo-600 hover:text-indigo-900"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                )}
               </div>
 
               {/* Product Type */}
@@ -826,60 +743,30 @@ function Products() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Product Type
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={productType}
                     onChange={(e) => setProductType(e.target.value)}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  >
-                    <option value="">Select Type</option>
-                    {productTypes.map(type => (
-                      <option key={type.id} value={type.id}>{type.name}</option>
-                    ))}
-                  </select>
+                    placeholder="Enter product type"
+                  />
                 </div>
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      setSelectedOptionType('type');
-                      setIsOptionFormOpen(true);
-                    }}
-                    className="mt-6 px-3 py-2 text-sm text-indigo-600 hover:text-indigo-900"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                )}
               </div>
 
               {/* Product Features */}
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Features
+                    Product Features (comma-separated)
                   </label>
-                  <Select
-                    isMulti
-                    components={animatedComponents}
-                    options={availableFeatures.map(feature => ({ value: feature.id, label: feature.name }))}
-                    value={productFeatures.map(featureId => ({ 
-                      value: featureId, 
-                      label: availableFeatures.find(f => f.id === featureId)?.name || featureId 
-                    }))}
-                    onChange={handleProductFeatureChange}
-                    className="w-full"
-                    placeholder="Select Features"
+                  <input
+                    type="text"
+                    value={productFeatures.join(', ')}
+                    onChange={(e) => setProductFeatures(e.target.value.split(',').map(f => f.trim()))}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Enter features, e.g., Feature1, Feature2"
                   />
                 </div>
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      setSelectedOptionType('feature');
-                      setIsOptionFormOpen(true);
-                    }}
-                    className="mt-6 px-3 py-2 text-sm text-indigo-600 hover:text-indigo-900"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </button>
-                )}
               </div>
 
               {/* Product Price */}
@@ -904,14 +791,14 @@ function Products() {
               {/* Product Warranty */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Warranty (years)
+                  Product Warranty
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={productWarranty}
                   onChange={(e) => setProductWarranty(e.target.value)}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  placeholder="Enter warranty period in years"
+                  placeholder="e.g., 1 year, 6 months"
                 />
               </div>
             </div>
@@ -925,9 +812,17 @@ function Products() {
               </button>
               <button
                 onClick={editingProduct ? handleUpdateProduct : handleAddProduct}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                disabled={isCreatingProduct || uploadImageMutation.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {editingProduct ? 'Update Product' : 'Add Product'}
+                {(isCreatingProduct || uploadImageMutation.isPending) ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                    {uploadImageMutation.isPending ? 'Uploading Image...' : (editingProduct ? 'Updating...' : 'Creating...')}
+                  </div>
+                ) : (
+                  editingProduct ? 'Update Product' : 'Add Product'
+                )}
               </button>
             </div>
           </div>

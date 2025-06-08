@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useAuthStore } from '../store/auth';
+import { useAuth } from '../features/auth/hooks/useAuth';
 import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, MoreVertical, Check, X } from 'lucide-react';
 
 // Types
@@ -27,7 +27,7 @@ type DashboardStats = {
 };
 
 function Dashboard() {
-  const user = useAuthStore((state) => state.user);
+  const { user } = useAuth();
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
