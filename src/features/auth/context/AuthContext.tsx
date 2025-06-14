@@ -47,66 +47,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize auth state from storage
   useEffect(() => {
     const initializeAuth = () => {
-      console.log('Initializing auth state');
+      console.log('=== AUTH INITIALIZATION START ===');
       const token = tokenStorage.getToken();
       const user = tokenStorage.getUser();
       
-      console.log('Retrieved from storage - token:', token);
-      console.log('Retrieved from storage - user:', user);
+      console.log('Retrieved from storage - token exists:', !!token);
+      console.log('Retrieved from storage - user exists:', !!user);
+      console.log('Retrieved from storage - user data:', user);
 
       if (token && user) {
-        console.log('Found valid auth data in storage');
+        console.log('Found valid auth data in storage, setting authenticated state');
         setState({
           user,
           token,
           isAuthenticated: true,
         });
       } else {
-        console.log('No valid auth data in storage');
+        console.log('No valid auth data in storage, setting unauthenticated state');
         setState({
           user: null,
           token: null,
           isAuthenticated: false,
         });
       }
+      console.log('=== AUTH INITIALIZATION COMPLETE ===');
       setIsInitialized(true);
     };
 
     initializeAuth();
   }, []);
 
-  // Handle route protection
+  // Handle route protection - only after initialization
   useEffect(() => {
     if (!isInitialized) {
       console.log('Auth not initialized yet, skipping route protection');
       return;
     }
 
-    console.log('Route protection - Current path:', location.pathname);
-    console.log('Route protection - Auth state:', state);
-    console.log('Route protection - Token valid:', tokenStorage.isValid());
+    console.log('=== ROUTE PROTECTION CHECK ===');
+    console.log('Current path:', location.pathname);
+    console.log('Auth state:', state);
+    console.log('Is authenticated from state:', state.isAuthenticated);
+    console.log('Token valid from storage:', tokenStorage.isValid());
 
     const isAuthPage = location.pathname === '/login';
-    const isAuthenticated = state.isAuthenticated && tokenStorage.isValid();
+    // Use the state from context instead of checking storage again
+    const isAuthenticated = state.isAuthenticated;
 
-    console.log('Route protection - Is auth page:', isAuthPage);
-    console.log('Route protection - Is authenticated:', isAuthenticated);
+    console.log('Is auth page:', isAuthPage);
+    console.log('Is authenticated:', isAuthenticated);
 
     if (!isAuthenticated && !isAuthPage) {
-      console.log('Not authenticated, redirecting to login');
+      console.log('❌ Not authenticated, redirecting to login');
       navigate('/login', {
         replace: true,
         state: { from: location.pathname }
       });
     } else if (isAuthenticated && isAuthPage) {
-      console.log('Authenticated, redirecting to dashboard');
+      console.log('✅ Authenticated on login page, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     } else if (isAuthenticated && location.pathname === '/') {
-      console.log('Authenticated on root path, redirecting to dashboard');
+      console.log('✅ Authenticated on root path, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     } else {
-      console.log('No redirect needed');
+      console.log('✅ No redirect needed - user can stay on current page');
     }
+    console.log('=== ROUTE PROTECTION COMPLETE ===');
   }, [state.isAuthenticated, isInitialized, location.pathname, navigate]);
 
   const value = {

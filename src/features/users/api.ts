@@ -14,6 +14,13 @@ export type RegisterResponse = {
   user: User;
 };
 
+export type UpdateUserData = {
+  name?: string;
+  email?: string;
+  role?: string;
+  userStatus?: string;
+};
+
 const USERS_ENDPOINT = '/api/users';
 
 export const usersApi = {
@@ -26,6 +33,38 @@ export const usersApi = {
       return data;
     } catch (error: any) {
       console.error('User registration API error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
+  },
+
+  update: async (userId: string, userData: UpdateUserData): Promise<User> => {
+    console.log('Making user update request to:', `${USERS_ENDPOINT}/${userId}`);
+    console.log('Update data:', userData);
+    try {
+      const { data } = await apiClient.put<User>(`${USERS_ENDPOINT}/${userId}`, userData);
+      console.log('User update response:', data);
+      return data;
+    } catch (error: any) {
+      console.error('User update API error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
+  },
+
+  delete: async (userId: string): Promise<void> => {
+    console.log('Making user delete request to:', `${USERS_ENDPOINT}/${userId}`);
+    try {
+      await apiClient.delete(`${USERS_ENDPOINT}/${userId}`);
+      console.log('User deleted successfully:', userId);
+    } catch (error: any) {
+      console.error('User delete API error:', {
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,

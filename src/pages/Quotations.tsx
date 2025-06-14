@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/auth';
+import { useAuthContext } from '../features/auth/context/AuthContext';
 import { Plus, FileText, CheckCircle2, Eye, X, FilterX } from 'lucide-react';
 import Select, { MultiValue } from 'react-select';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
@@ -29,10 +30,11 @@ const mockProducts: ProductOption[] = [
 
 function Quotations() {
   const user = useAuthStore((state) => state.user);
+  const { isInitialized } = useAuthContext();
   // const isAdmin = user?.role === 'admin';
   // if (isAdmin) return null;
 
-  // State for quotations (user-specific)
+  // State for quotations (user-specific) - ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const [quotations, setQuotations] = useState<QuotationItem[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [step, setStep] = useState(1);
@@ -60,6 +62,15 @@ function Quotations() {
   // Step 5 fields
   const [signature, setSignature] = useState<File | null>(null);
   const [signatureUrl, setSignatureUrl] = useState('');
+
+  // Don't render anything until auth is initialized
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   // Handlers for product selection
   const handleProductSelect = (options: MultiValue<ProductOption>) => {

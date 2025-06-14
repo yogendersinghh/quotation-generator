@@ -9,6 +9,7 @@ import Quotations from './pages/Quotations';
 import Users from './pages/Users';
 import Layout from './components/Layout';
 import Customers from './pages/Customers';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -54,16 +55,33 @@ function App() {
         />
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/products" replace />} />
           <Route
             path="/"
             element={<Layout />}
           >
-            <Route path="dashboard" element={<Dashboard />} />
+            {/* Admin-only routes */}
+            <Route 
+              path="dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']} fallbackPath="/products">
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="users" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']} fallbackPath="/products">
+                  <Users />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Routes accessible to all authenticated users */}
             <Route path="products" element={<Products />} />
             <Route path="quotations" element={<Quotations />} />
             <Route path="customers" element={<Customers />} />
-            <Route path="users" element={<Users />} />
           </Route>
         </Routes>
       </AuthProvider>

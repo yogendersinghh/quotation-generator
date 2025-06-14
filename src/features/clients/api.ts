@@ -9,11 +9,12 @@ export const clientsApi = {
     limit?: number;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    search?: string;
   }): Promise<ClientsResponse> => {
     const url = new URL(CLIENTS_ENDPOINT, apiClient.defaults.baseURL);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && value !== '') {
           url.searchParams.append(key, String(value));
         }
       });

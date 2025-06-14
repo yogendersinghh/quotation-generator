@@ -14,34 +14,41 @@ const COOKIE_OPTIONS = {
 
 export const tokenStorage = {
   getToken: () => {
-    const token = Cookies.get(TOKEN_KEY);
-    console.log('Getting token:', token);
-    // Validate token format if needed
-    if (token && !/^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$/.test(token)) {
+    // Try cookies first, then localStorage as fallback
+    let token = Cookies.get(TOKEN_KEY);
+    if (!token) {
+      token = localStorage.getItem(TOKEN_KEY) || undefined;
+    }
+    
+    console.log('Getting token:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    // Only validate if token exists and looks like a JWT
+    if (token && !token.includes('.')) {
+      console.warn('Token format looks invalid (no dots), clearing auth data');
       tokenStorage.clear();
       return null;
     }
+    
     return token;
   },
   
   setToken: (token: string) => {
-    console.log('Setting token:', token);
+    console.log('Setting token:', token ? `${token.substring(0, 20)}...` : 'null');
     if (!token) {
       console.error('Attempted to set empty token');
       return;
     }
     
-    // Validate token format
-    if (!/^[A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*$/.test(token)) {
-      console.error('Invalid token format');
+    // Basic JWT validation - should have at least 2 dots
+    if (!token.includes('.') || token.split('.').length < 2) {
+      console.error('Token format looks invalid');
       return;
     }
 
     // Set token in cookie with secure options
     Cookies.set(TOKEN_KEY, token, COOKIE_OPTIONS);
     
-    // Also set in localStorage for backward compatibility
-    // Note: This is less secure but might be needed for some legacy features
+    // Also set in localStorage for better persistence
     localStorage.setItem(TOKEN_KEY, token);
   },
   
@@ -52,7 +59,12 @@ export const tokenStorage = {
   },
   
   getUser: () => {
-    const userStr = Cookies.get(USER_KEY);
+    // Try cookies first, then localStorage as fallback
+    let userStr = Cookies.get(USER_KEY);
+    if (!userStr) {
+      userStr = localStorage.getItem(USER_KEY) || undefined;
+    }
+    
     console.log('Getting user from storage:', userStr);
     if (!userStr) return null;
     try {
@@ -86,15 +98,22 @@ export const tokenStorage = {
       return;
     }
     
-    Cookies.set(USER_KEY, JSON.stringify(user), {
-      expires: 1, // 1 day
+    const userStr = JSON.stringify(user);
+    
+    // Set in cookies
+    Cookies.set(USER_KEY, userStr, {
+      expires: 7, // 7 days to match token
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict'
     });
+    
+    // Also set in localStorage for better persistence
+    localStorage.setItem(USER_KEY, userStr);
   },
   
   removeUser: () => {
-    Cookies.remove(USER_KEY);
+    Cookies.remove(USER_KEY, { path: '/' });
+    localStorage.removeItem(USER_KEY);
   },
   
   clear: () => {

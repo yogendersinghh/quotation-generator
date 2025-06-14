@@ -7,13 +7,20 @@ function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
 
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Product', href: '/products', icon: Package },
-    { name: 'Customers Info', href: '/customers', icon: UsersIcon },
-    { name: 'Create Quotations', href: '/quotations', icon: FileText },
-    { name: 'Users', href: '/users', icon: UsersIcon },
+  // Define navigation items with role restrictions
+  const allNavigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin'] },
+    { name: 'Product', href: '/products', icon: Package, roles: ['admin', 'manager', 'user'] },
+    { name: 'Customers Info', href: '/customers', icon: UsersIcon, roles: ['admin', 'manager', 'user'] },
+    { name: 'Create Quotations', href: '/quotations', icon: FileText, roles: ['admin', 'manager', 'user'] },
+    { name: 'Users', href: '/users', icon: UsersIcon, roles: ['admin'] },
   ];
+
+  // Filter navigation based on user role
+  const navigation = allNavigation.filter(item => {
+    if (!user?.role) return false;
+    return item.roles.includes(user.role);
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -27,12 +34,13 @@ function Layout() {
             <div className="flex-1 px-4 py-6 space-y-1">
               {navigation.map((item) => {
                 const Icon = item.icon;
+                const isActive = location.pathname === item.href;
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
                     className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                      location.pathname === item.href
+                      isActive
                         ? 'bg-gray-100 text-gray-900'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}

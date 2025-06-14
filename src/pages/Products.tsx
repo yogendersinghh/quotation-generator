@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuthStore } from '../store/auth';
+import { useAuthContext } from '../features/auth/context/AuthContext';
+import { useComponentInitialization } from '../hooks/useComponentInitialization';
 import { 
   Plus, 
   Search, 
@@ -19,14 +21,16 @@ import {
   MoreVertical,
   FilterX,
   ArrowUpDown,
-  IndianRupee
+  IndianRupee,
+  FolderPlus
 } from 'lucide-react';
 import Select, { MultiValue, ActionMeta } from 'react-select';
-import makeAnimated from 'react-select/animated';
 import { useProducts } from '../features/products/hooks/useProducts';
 import type { Product } from '../features/products/types';
 import { useCreateProduct } from '../features/products/hooks/useCreateProduct';
+import { AddCategoryModal } from '../features/categories/components/AddCategoryModal';
 import { toast } from 'react-hot-toast';
+import { animatedComponents } from '../utils/react-select';
 
 // Types
 type ProductModel = {
@@ -75,8 +79,11 @@ type SelectOption = {
 };
 
 function Products() {
-  const user = useAuthStore((state) => state.user);
-  const isAdmin = user?.role === 'admin';
+  // Use the new initialization hook at the very top
+  const { isInitialized, user, isAdmin: isAdminFromHook } = useComponentInitialization();
+  
+  // More robust admin check
+  const isAdmin = user?.role?.toLowerCase()?.trim() === 'admin';
   
   // State for product options
   const [productModels, setProductModels] = useState<ProductModel[]>([
@@ -106,6 +113,9 @@ function Products() {
   const [selectedOptionType, setSelectedOptionType] = useState<'model' | 'type' | 'feature' | null>(null);
   const [newOptionName, setNewOptionName] = useState('');
   
+  // State for Add Category modal
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  
   // State for filters
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedModel, setSelectedModel] = useState<string>('');
@@ -132,10 +142,47 @@ function Products() {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState('title');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  
-  const animatedComponents = makeAnimated();
 
   const { createProduct, uploadImageMutation, isPending: isCreatingProduct } = useCreateProduct();
+
+  // Fetch products using the hook
+  const { data, isLoading, error } = useProducts({
+    page,
+    limit: 10,
+    sortBy,
+    sortOrder,
+  });
+
+  // Debug logging
+  console.log('Products component - Debug info:', {
+    user,
+    userRole: user?.role,
+    isAdmin,
+    isInitialized
+  });
+  
+  // Don't render anything until auth is initialized
+  if (!isInitialized) {
+    console.log('Products component: Auth not initialized');
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('Products component: Auth initialized, proceeding with component');
+  
+  // Debug modal state
+  console.log('Modal state:', isAddCategoryModalOpen);
+  
+  const handleAddCategoryClick = () => {
+    console.log('Add Category button clicked!');
+    setIsAddCategoryModalOpen(true);
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -188,38 +235,22 @@ function Products() {
       toast.error('Please fill in all required fields');
       return;
     }
-    if (uploadImageMutation.isPending) { // If an image is currently uploading
-      toast.error('Please wait for the image to finish uploading.');
-      return;
-    }
-    if (productImageFile && !productImageFilename) { // If a file was selected but not yet uploaded/filename is missing
-      toast.error('Image upload failed or is pending. Please re-upload or select a valid image.');
-      return;
-    }
+
+    const productData = {
+      title: productTitle.trim(),
+      model: productModel.trim(),
+      type: productType.trim(),
+      features: productFeatures.join(','), // Convert array to comma-separated string
+      price: parseFloat(productPrice),
+      warranty: productWarranty.trim(),
+      productImage: productImageFilename || '',
+      category: '6845333f5a9d818c74c66db8', // Using a default category ID
+    };
 
     try {
-      await createProduct({
-        title: productTitle.trim(),
-        model: productModel,
-        type: productType,
-        features: productFeatures.join(','), // Convert array to comma-separated string
-        price: parseFloat(productPrice),
-        warranty: productWarranty,
-        category: '6845333f5a9d818c74c66db8', // Using the category ID from your example
-      }, productImageFile || undefined);
-
-      // Reset form
-      setIsFormOpen(false);
-      setProductImageFile(null);
-      setProductImageFilename('');
-      setProductTitle('');
-      setProductModel('');
-      setProductType('');
-      setProductFeatures([]);
-      setProductPrice('');
-      setProductWarranty('');
+      await createProduct(productData);
+      handleCloseModal();
     } catch (error) {
-      // Error handling is done in the mutation callbacks
       console.error('Failed to create product:', error);
     }
   };
@@ -240,14 +271,13 @@ function Products() {
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    setProductImageFile(null); // Reset new image upload
-    setProductImageFilename(product.productImage); // Set existing image filename
     setProductTitle(product.title);
     setProductModel(product.model);
     setProductType(product.type);
-    setProductFeatures(product.features); // Assuming features is string[] from API
+    setProductFeatures(product.features);
     setProductPrice(product.price.toString());
-    setProductWarranty(product.warranty); // Keep as string
+    setProductWarranty(product.warranty);
+    setProductImageFilename(product.productImage || '');
     setIsFormOpen(true);
   };
 
@@ -258,48 +288,33 @@ function Products() {
 
   const confirmDelete = () => {
     if (productToDelete) {
-      // This part will be handled by the delete hook (not implemented yet for products)
-      // For now, it will simply remove from local state if it was mock data
-      // For actual API, this will be a mutation call
-      // setProducts(products.filter(p => p._id !== productToDelete._id)); // will use _id
+      setProducts(products.filter(p => p._id !== productToDelete._id));
       setIsDeleteModalOpen(false);
       setProductToDelete(null);
+      toast.success('Product deleted successfully');
     }
   };
 
   const handleUpdateProduct = () => {
     if (!editingProduct || !productTitle.trim() || !productModel || !productType || !productPrice || !productWarranty) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
-    // This is placeholder logic, will be replaced with an update API call
-    const updatedProduct: Product = {
+    const updatedProduct = {
       ...editingProduct,
-      productImage: productImageFilename || editingProduct.productImage, // Use new image or keep existing
       title: productTitle.trim(),
-      model: productModel,
-      type: productType,
-      features: productFeatures, // Assuming features is string[] from API
+      model: productModel.trim(),
+      type: productType.trim(),
+      features: productFeatures,
       price: parseFloat(productPrice),
-      warranty: productWarranty, // Keep as string
-      category: editingProduct.category, // Assuming category is present in API Product type
-      createdAt: editingProduct.createdAt,
-      updatedAt: editingProduct.updatedAt,
+      warranty: productWarranty.trim(),
+      productImage: productImageFilename || editingProduct.productImage,
     };
 
-    // setProducts(products.map(p => p._id === editingProduct._id ? updatedProduct : p)); // will use _id
-    setIsFormOpen(false);
-    setEditingProduct(null);
-    
-    // Reset form
-    setProductImageFile(null);
-    setProductImageFilename('');
-    setProductTitle('');
-    setProductModel('');
-    setProductType('');
-    setProductFeatures([]);
-    setProductPrice('');
-    setProductWarranty('');
+    setProducts(products.map(p => p._id === editingProduct._id ? updatedProduct : p));
+    handleCloseModal();
+    toast.success('Product updated successfully');
   };
 
   const handleActionClick = (productId: string) => {
@@ -309,30 +324,15 @@ function Products() {
   const handleCloseModal = () => {
     setIsFormOpen(false);
     setEditingProduct(null);
-    setProductImageFile(null);
-    setProductImageFilename('');
-    // Reset form fields
     setProductTitle('');
     setProductModel('');
     setProductType('');
     setProductFeatures([]);
     setProductPrice('');
     setProductWarranty('');
+    setProductImageFile(null);
+    setProductImageFilename('');
   };
-
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          product.model.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesModel = !selectedModel || product.model === selectedModel;
-      const matchesType = !selectedType || product.type === selectedType;
-      const matchesFeatures = selectedFeatures.length === 0 || 
-                            selectedFeatures.every(feature => product.features.includes(feature));
-      const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1];
-      
-      return matchesSearch && matchesModel && matchesType && matchesFeatures && matchesPrice;
-    });
-  }, [products, searchTerm, selectedModel, selectedType, selectedFeatures, priceRange]);
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -356,13 +356,8 @@ function Products() {
     }).format(price);
   };
 
-  // Fetch products using the hook
-  const { data, isLoading, error } = useProducts({
-    page,
-    limit: 10,
-    sortBy,
-    sortOrder,
-  });
+  // Debug logging for products data
+  console.log('Products hook result:', { data, isLoading, error });
 
   // Access products and pagination info from the fetched data
   const productsData = data?.products || [];
@@ -381,36 +376,71 @@ function Products() {
     );
   }, [productsData, searchTerm]);
 
+  // Show loading state
   if (isLoading) {
+    console.log('Products page: Loading state');
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500 text-center">
-          <h2 className="text-2xl font-bold mb-2">Error Loading Products</h2>
-          <p>Failed to load products. Please try again later.</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading products...</p>
         </div>
       </div>
     );
   }
 
+  // Show error state
+  if (error) {
+    console.error('Products page: Error state', error);
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500 text-center max-w-md mx-auto p-6">
+          <h2 className="text-2xl font-bold mb-2">Error Loading Products</h2>
+          <p className="mb-4">Failed to load products. Please try again later.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          >
+            Retry
+          </button>
+          <div className="mt-4 text-xs text-gray-500">
+            <p>Error details:</p>
+            <pre className="mt-2 p-2 bg-gray-100 rounded text-left overflow-auto">
+              {error instanceof Error ? error.message : JSON.stringify(error, null, 2)}
+            </pre>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('Products page: Rendering main content');
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <Plus className="w-5 h-5 mr-2" />
-          Add Product
-        </button>
+        <div className="flex items-center space-x-3">
+          {/* Add Category Button - Admin Only */}
+
+          {isAdmin && (
+            <button
+              onClick={handleAddCategoryClick}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              <FolderPlus className="w-5 h-5 mr-2" />
+              Add Category
+            </button>
+          )}
+          
+          {/* Add Product Button */}
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Add Product
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -589,7 +619,7 @@ function Products() {
                                 handleDeleteProduct(product);
                                 setActionDropdownOpen(null);
                               }}
-                              className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                               role="menuitem"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
@@ -604,33 +634,10 @@ function Products() {
               ))}
             </tbody>
           </table>
-
-          {/* Pagination */}
-          {pagination && pagination.pages > 1 && (
-            <div className="flex justify-center mt-4 p-4 border-t border-gray-200">
-              <button
-                onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                disabled={page === 1}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <span className="mx-3 py-2 text-sm text-gray-700">
-                Page {page} of {pagination.pages}
-              </span>
-              <button
-                onClick={() => setPage(prev => Math.min(pagination.pages, prev + 1))}
-                disabled={page === pagination.pages}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Add/Edit Product Modal */}
+      {/* Add Product Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -638,168 +645,129 @@ function Products() {
               <h3 className="text-lg font-medium text-gray-900">
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
               </h3>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-500"
-              >
+              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-500">
                 <X className="w-6 h-6" />
               </button>
             </div>
             
-            <div className="px-6 py-4 space-y-6">
-              {/* Product Image */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Image
-                </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                  <div className="space-y-1 text-center">
-                    {productImageFile ? (
-                      <div className="relative">
-                        <img
-                          src={URL.createObjectURL(productImageFile)}
-                          alt="Preview"
-                          className="mx-auto h-32 w-32 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => {
-                            setProductImageFile(null);
-                            setProductImageFilename('');
-                          }}
-                          className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : productImageFilename ? (
-                      <div className="relative">
-                        <img
-                          src={`http://localhost:3033/uploads/${productImageFilename}`}
-                          alt="Current"
-                          className="mx-auto h-32 w-32 object-cover rounded-lg"
-                        />
-                        <button
-                          onClick={() => setProductImageFilename('')}
-                          className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 hover:bg-red-200"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                        <div className="flex text-sm text-gray-600">
-                          <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
-                            <span>Upload a file</span>
-                            <input
-                              type="file"
-                              className="sr-only"
-                              accept="image/*"
-                              onChange={handleImageChange}
-                            />
-                          </label>
-                          <p className="pl-1">or drag and drop</p>
-                        </div>
-                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                      </>
+            <div className="px-6 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Product Title */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Title
+                  </label>
+                  <input
+                    type="text"
+                    value={productTitle}
+                    onChange={(e) => setProductTitle(e.target.value)}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="Enter product title"
+                  />
+                </div>
+
+                {/* Product Image */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Image
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                    />
+                    {productImageFile && (
+                      <img
+                        src={URL.createObjectURL(productImageFile)}
+                        alt="Preview"
+                        className="h-16 w-16 rounded object-cover"
+                      />
                     )}
                   </div>
                 </div>
-              </div>
 
-              {/* Product Title */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Title
-                </label>
-                <input
-                  type="text"
-                  value={productTitle}
-                  onChange={(e) => setProductTitle(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  placeholder="Enter product title"
-                />
-              </div>
-
-              {/* Product Model */}
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Model
-                  </label>
-                  <input
-                    type="text"
-                    value={productModel}
-                    onChange={(e) => setProductModel(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    placeholder="Enter product model"
-                  />
-                </div>
-              </div>
-
-              {/* Product Type */}
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Type
-                  </label>
-                  <input
-                    type="text"
-                    value={productType}
-                    onChange={(e) => setProductType(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    placeholder="Enter product type"
-                  />
-                </div>
-              </div>
-
-              {/* Product Features */}
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Features (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={productFeatures.join(', ')}
-                    onChange={(e) => setProductFeatures(e.target.value.split(',').map(f => f.trim()))}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                    placeholder="Enter features, e.g., Feature1, Feature2"
-                  />
-                </div>
-              </div>
-
-              {/* Product Price */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Price
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+                {/* Product Model */}
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Model
+                    </label>
+                    <input
+                      type="text"
+                      value={productModel}
+                      onChange={(e) => setProductModel(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="Enter product model"
+                    />
                   </div>
+                </div>
+
+                {/* Product Type */}
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Type
+                    </label>
+                    <input
+                      type="text"
+                      value={productType}
+                      onChange={(e) => setProductType(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="Enter product type"
+                    />
+                  </div>
+                </div>
+
+                {/* Product Features */}
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Features (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={productFeatures.join(', ')}
+                      onChange={(e) => setProductFeatures(e.target.value.split(',').map(f => f.trim()))}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="Enter features, e.g., Feature1, Feature2"
+                    />
+                  </div>
+                </div>
+
+                {/* Product Price */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Price
+                  </label>
+                  <div className="relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">$</span>
+                    </div>
+                    <input
+                      type="number"
+                      value={productPrice}
+                      onChange={(e) => setProductPrice(e.target.value)}
+                      className="w-full pl-7 pr-12 rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {/* Product Warranty */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Product Warranty
+                  </label>
                   <input
-                    type="number"
-                    value={productPrice}
-                    onChange={(e) => setProductPrice(e.target.value)}
-                    className="w-full pl-7 pr-12 rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                    placeholder="0.00"
+                    type="text"
+                    value={productWarranty}
+                    onChange={(e) => setProductWarranty(e.target.value)}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    placeholder="e.g., 1 year, 6 months"
                   />
                 </div>
-              </div>
-
-              {/* Product Warranty */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Product Warranty
-                </label>
-                <input
-                  type="text"
-                  value={productWarranty}
-                  onChange={(e) => setProductWarranty(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  placeholder="e.g., 1 year, 6 months"
-                />
               </div>
             </div>
 
@@ -916,6 +884,12 @@ function Products() {
           </div>
         </div>
       )}
+
+      {/* Add Category Modal */}
+      <AddCategoryModal 
+        isOpen={isAddCategoryModalOpen}
+        onClose={() => setIsAddCategoryModalOpen(false)}
+      />
     </div>
   );
 }

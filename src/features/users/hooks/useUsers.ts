@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../lib/axios';
+import { useAuthContext } from '../../auth/context/AuthContext';
 
 export type User = {
   _id: string;
@@ -29,6 +30,8 @@ type UseUsersOptions = {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  search?: string;
+  enabled?: boolean;
 };
 
 export const useUsers = (options: UseUsersOptions = {}) => {
@@ -37,14 +40,31 @@ export const useUsers = (options: UseUsersOptions = {}) => {
     limit = 10,
     sortBy = 'email',
     sortOrder = 'asc',
+    search = '',
+    enabled = true,
   } = options;
 
+  // Get authentication state
+  const { isAuthenticated, isInitialized } = useAuthContext();
+
+  const shouldEnable = enabled && isAuthenticated && isInitialized;
+  
+  console.log('useUsers hook:', {
+    enabled,
+    isAuthenticated,
+    isInitialized,
+    shouldEnable,
+    search,
+    page,
+    limit
+  });
+
   return useQuery({
-    queryKey: ['users', { page, limit, sortBy, sortOrder }],
+    queryKey: ['users', { page, limit, sortBy, sortOrder, search }],
     queryFn: async () => {
       try {
-        // Construct the URL exactly like the curl command
-        const url = `/api/users?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+        // Construct the URL exactly like the curl command with search parameter
+        const url = `/api/users?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}${search ? `&search=${encodeURIComponent(search)}` : ''}`;
         console.log('Making GET request to:', url);
         
         const { data } = await apiClient.get<UsersResponse>(url, {
@@ -70,6 +90,7 @@ export const useUsers = (options: UseUsersOptions = {}) => {
         throw error;
       }
     },
+    enabled: shouldEnable, // Only fetch when authenticated and initialized
     retry: false,
   });
 }; 
