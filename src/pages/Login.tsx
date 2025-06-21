@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../features/auth/hooks/useAuth';
 import type { LoginCredentials } from '../features/auth/types';
+import { Eye, EyeOff } from 'lucide-react';
 
 // Define validation schema
 const loginSchema = z.object({
@@ -16,11 +17,7 @@ const loginSchema = z.object({
     .string()
     .min(1, 'Password is required')
     .min(6, 'Password must be at least 6 characters')
-    .max(50, 'Password must be less than 50 characters')
-    .refine(
-      (password) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password),
-      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
-    ),
+    .max(50, 'Password must be less than 50 characters'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -37,6 +34,7 @@ function Login() {
   });
 
   const { login, isLoading } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
 
   const onSubmit = async (data: LoginCredentials) => {
     try {
@@ -90,13 +88,13 @@ function Login() {
                 </p>
               )}
             </div>
-            <div>
+            <div className="relative">
               <label htmlFor="password" className="sr-only">
                 Password
               </label>
               <input
                 {...register('password')}
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
                   errors.password ? 'border-red-300' : 'border-gray-300'
@@ -104,6 +102,20 @@ function Login() {
                 placeholder="Password"
                 aria-invalid={errors.password ? 'true' : 'false'}
               />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-400 hover:text-gray-500"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600" role="alert">
                   {errors.password.message}

@@ -1,14 +1,21 @@
+export type CreatedBy = {
+  _id: string;
+  name: string;
+  email: string;
+};
+
 export type Client = {
   _id: string;
   name: string;
   email: string;
   position: string;
   address: string;
-  phoneNumber: string;
-  createdBy?: string; // Optional, as it might not be returned on all calls
+  phone: string;
+  companyName?: string;
+  createdBy?: CreatedBy;
   createdAt: string;
   updatedAt: string;
-  __v?: number; // Optional, as it might not be returned on all calls
+  __v?: number;
 };
 
 export type PaginationInfo = {
@@ -21,6 +28,7 @@ export type PaginationInfo = {
 export type ClientsResponse = {
   clients: Client[];
   pagination: PaginationInfo;
+  filters: Record<string, any>;
 };
 
 export type CreateClientPayload = {
@@ -28,7 +36,8 @@ export type CreateClientPayload = {
   email: string;
   position: string;
   address: string;
-  phoneNumber: string;
+  phone: string;
+  companyName: string;
 };
 
 export type CreateClientResponse = {

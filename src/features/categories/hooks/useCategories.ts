@@ -15,9 +15,14 @@ export interface UseCategoriesParams {
 export const useCategories = (params: UseCategoriesParams = {}) => {
   const { enabled = true, ...queryParams } = params;
 
+  console.log('useCategories hook called with params:', { enabled, queryParams });
+
   return useQuery({
     queryKey: ['categories', queryParams],
-    queryFn: () => categoriesApi.getCategories(queryParams),
+    queryFn: () => {
+      console.log('Categories API call being made with params:', queryParams);
+      return categoriesApi.getCategories(queryParams);
+    },
     enabled,
   });
 };

@@ -3,8 +3,7 @@ import { useAuth } from '../features/auth/hooks/useAuth';
 import { useAuthContext } from '../features/auth/context/AuthContext';
 import { useUsers } from '../features/users/hooks/useUsers';
 import { useQuotations, useUpdateQuotationStatus, Quotation, QuotationStatus, AdminStatus, DashboardStats } from '../features/quotations';
-import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, MoreVertical, Check, X, Calendar, FolderPlus } from 'lucide-react';
-import { AddCategoryModal } from '../features/categories/components/AddCategoryModal';
+import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, MoreVertical, Check, X, Calendar } from 'lucide-react';
 // import { AuthDebug } from '../components/AuthDebug';
 
 // Remove the old type definitions since we're importing them from quotations
@@ -50,9 +49,6 @@ function Dashboard() {
   const [calendarView, setCalendarView] = useState<'months' | 'years'>('months');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   
-  // State for Add Category modal
-  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
-
   // Ref for the user dropdown
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
@@ -72,12 +68,6 @@ function Dashboard() {
     roleTrimmed: user?.role?.trim(),
     roleLowerCase: user?.role?.toLowerCase()
   });
-
-  // Handle Add Category click
-  const handleAddCategoryClick = () => {
-    console.log('Add Category button clicked from Dashboard!');
-    setIsAddCategoryModalOpen(true);
-  };
 
   // Debounce search term
   useEffect(() => {
@@ -355,17 +345,6 @@ function Dashboard() {
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
         <div className="flex items-center space-x-3">
           <div className="text-sm text-gray-500">Welcome back, {user?.name}</div>
-          
-          {/* Add Category Button - Admin Only */}
-          {isAdmin && (
-            <button
-              onClick={handleAddCategoryClick}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <FolderPlus className="w-5 h-5 mr-2" />
-              Add Category
-            </button>
-          )}
         </div>
       </div>
 
@@ -1014,12 +993,6 @@ function Dashboard() {
           )}
         </>
       )}
-
-      {/* Add Category Modal */}
-      <AddCategoryModal 
-        isOpen={isAddCategoryModalOpen}
-        onClose={() => setIsAddCategoryModalOpen(false)}
-      />
     </div>
   );
 }

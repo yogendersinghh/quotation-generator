@@ -17,7 +17,8 @@ export const useCreateClient = () => {
     },
     onError: (error: any) => {
       console.error('Create client mutation error:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to create customer. Please try again.';
+      const errorMessage = error.response?.data?.message || error.response?.error ||  'Failed to create customer. Please try again.';
+      console.error('Error Message:', errorMessage);
       toast.error(errorMessage);
     },
   });

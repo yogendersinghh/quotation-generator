@@ -30,7 +30,7 @@ import { User as UserApiType, User as UserHookType } from '../features/users/hoo
 import { useAuthContext } from '../features/auth/context/AuthContext';
 
 // Types
-type UserRole = 'admin' | 'user' | 'manager';
+type UserRole = 'admin' | 'manager';
 
 type UserStatus = 'active' | 'blocked';
 
@@ -51,7 +51,6 @@ const mockUsers: UserHookType[] = [
 // Role options for dropdown (used for display mapping)
 const roleDisplayMap: Record<UserRole, string> = {
   admin: 'Administrator',
-  user: 'User',
   manager: 'Manager',
 };
 
@@ -334,7 +333,7 @@ function Users() {
       </div>
 
       {/* Search bar - ALWAYS VISIBLE */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input
@@ -410,7 +409,7 @@ function Users() {
       ) : (
         <>
           {/* User table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>

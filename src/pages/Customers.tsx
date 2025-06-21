@@ -296,8 +296,8 @@ function Customers() {
       {clients.length === 0 ? (
         !debouncedSearchQuery ? (
           // Case 1: No customers in the system AND no active search
-          <div className="flex items-center justify-center min-h-[50vh]">
-            <div className="text-center bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <div className="flex items-center justify-center">
+            <div className="text-center bg-white p-8 rounded-lg shadow-md w-full">
               <UsersIcon className="w-24 h-24 text-indigo-500 mx-auto mb-6 bg-indigo-50 p-4 rounded-full" />
               <h2 className="text-2xl font-bold mb-3 text-gray-800">No Customers Added Yet</h2>
               <p className="text-gray-600 mb-6">
@@ -334,7 +334,7 @@ function Customers() {
       ) : (
         <>
           {/* Customer table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="bg-white rounded-lg shadow">
             <table className="w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -363,6 +363,12 @@ function Customers() {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
+                    Created By
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Address
                   </th>
                   <th
@@ -380,38 +386,40 @@ function Customers() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {clients.map((customer) => (
-                  <tr key={customer._id} className="hover:bg-gray-50">
+                {clients.map((client) => (
+                  <tr key={client._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {customer.name}
+                      {client.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.email}
+                      {client.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.position}
+                      {client.position}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.address}
+                      {client.createdBy ? client.createdBy.name : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: client.address }}>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.phoneNumber}
+                      {client.phone}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="relative dropdown-container">
                         <button
-                          onClick={() => handleActionClick(customer._id)}
+                          onClick={() => handleActionClick(client._id)}
                           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                           aria-label="Customer actions"
                         >
                           <MoreVertical className="h-5 w-5" />
                         </button>
                         
-                        {actionDropdownOpen === customer._id && (
+                        {actionDropdownOpen === client._id && (
                           <div className="absolute right-0 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 ring-1 ring-black ring-opacity-5">
                             <div className="py-1">
                               <button
-                                onClick={() => handleEditCustomer(customer)}
+                                onClick={() => handleEditCustomer(client)}
                                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
                               >
                                 <Edit2 className="h-4 w-4 mr-3 text-indigo-500" />
@@ -419,7 +427,7 @@ function Customers() {
                               </button>
                               <div className="border-t border-gray-100"></div>
                               <button
-                                onClick={() => handleDeleteCustomer(customer)}
+                                onClick={() => handleDeleteCustomer(client)}
                                 className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:bg-red-50"
                               >
                                 <Trash2 className="h-4 w-4 mr-3 text-red-500" />

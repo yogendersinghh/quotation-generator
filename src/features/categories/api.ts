@@ -3,7 +3,9 @@ import {
   Category, 
   CreateCategoryRequest, 
   CreateCategoryResponse, 
-  GetCategoriesResponse 
+  GetCategoriesResponse,
+  UpdateCategoryResponse,
+  DeleteCategoryResponse,
 } from './types';
 
 export const categoriesApi = {
@@ -26,13 +28,13 @@ export const categoriesApi = {
   },
 
   // Update a category
-  updateCategory: async (id: string, data: Partial<CreateCategoryRequest>): Promise<CreateCategoryResponse> => {
+  updateCategory: async (id: string, data: Partial<CreateCategoryRequest>): Promise<UpdateCategoryResponse> => {
     const response = await apiClient.put(`/api/categories/${id}`, data);
     return response.data;
   },
 
   // Delete a category
-  deleteCategory: async (id: string): Promise<{ success: boolean; message: string }> => {
+  deleteCategory: async (id: string): Promise<DeleteCategoryResponse> => {
     const response = await apiClient.delete(`/api/categories/${id}`);
     return response.data;
   },

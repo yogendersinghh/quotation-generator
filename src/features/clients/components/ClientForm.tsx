@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { X, User, Mail, Briefcase, MapPin, Phone } from 'lucide-react';
 import { useCreateClient } from '../hooks/useCreateClient';
 import { useUpdateClient } from '../hooks/useUpdateClient';
 import { Client, CreateClientPayload } from '../types';
+import { CKEditor } from '@ckeditor/ckeditor5-react';
+import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
 
 // Define the validation schema for the client form
 const clientSchema = z.object({
@@ -13,7 +15,8 @@ const clientSchema = z.object({
   email: z.string().email('Invalid email address').min(1, 'Email is required'),
   position: z.string().min(1, 'Position is required'),
   address: z.string().min(1, 'Address is required'),
-  phoneNumber: z.string().min(10, 'Phone number must be at least 10 characters').regex(/^\+?[0-9\s\-()]{10,}$/, 'Invalid phone number format'),
+  phone: z.string().min(10, 'Phone number must be at least 10 characters').regex(/^\+?[0-9\s\-()]{10,}$/, 'Invalid phone number format'),
+  companyName: z.string().min(1, 'Company name is required'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
@@ -27,15 +30,23 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
   const { mutate: createClient, isPending: isCreating } = useCreateClient();
   const { mutate: updateClient, isPending: isUpdating } = useUpdateClient();
 
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<ClientFormData>({
+  const { register, handleSubmit, formState: { errors }, reset, control } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
-    defaultValues: initialData ? { // Populate form with initialData if provided
+    defaultValues: initialData ? {
       name: initialData.name,
       email: initialData.email,
       position: initialData.position,
       address: initialData.address,
-      phoneNumber: initialData.phoneNumber,
-    } : {},
+      phone: initialData.phone,
+      companyName: initialData.companyName || '',
+    } : {
+      name: '',
+      email: '',
+      position: '',
+      address: '',
+      phone: '',
+      companyName: '',
+    },
   });
 
   useEffect(() => {
@@ -45,10 +56,18 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
         email: initialData.email,
         position: initialData.position,
         address: initialData.address,
-        phoneNumber: initialData.phoneNumber,
+        phone: initialData.phone,
+        companyName: initialData.companyName || '',
       });
     } else {
-      reset(); // Clear form for new client
+      reset({
+        name: '',
+        email: '',
+        position: '',
+        address: '',
+        phone: '',
+        companyName: '',
+      });
     }
   }, [initialData, reset]);
 
@@ -134,37 +153,66 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
           </div>
 
           <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
+            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name</label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MapPin className="h-5 w-5 text-gray-400" />
+                <Briefcase className="h-5 w-5 text-gray-400" />
               </div>
               <input
                 type="text"
-                id="address"
-                {...register('address')}
+                id="companyName"
+                {...register('companyName')}
                 className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
-                placeholder="123 Main St, Anytown, USA"
+                placeholder="Acme Inc."
+              />
+            </div>
+            {errors.companyName && <p className="mt-1 text-sm text-red-600">{errors.companyName.message}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
+            <div className="mt-1">
+              <Controller
+                name="address"
+                control={control}
+                render={({ field }) => (
+                  <CKEditor
+                    editor={ClassicEditor}
+                    data={field.value}
+                    onChange={(_event: any, editor: any) => {
+                      const data = editor.getData();
+                      field.onChange(data);
+                    }}
+                    config={{
+                      toolbar: ['undo', 'redo', 'paragraph', 'bold', 'italic'],
+                      heading: {
+                        options: [
+                          { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' }
+                        ]
+                      }
+                    }}
+                  />
+                )}
               />
             </div>
             {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>}
           </div>
 
           <div>
-            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">Phone Number</label>
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Phone className="h-5 w-5 text-gray-400" />
               </div>
               <input
                 type="text"
-                id="phoneNumber"
-                {...register('phoneNumber')}
+                id="phone"
+                {...register('phone')}
                 className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
                 placeholder="(123) 456-7890"
               />
             </div>
-            {errors.phoneNumber && <p className="mt-1 text-sm text-red-600">{errors.phoneNumber.message}</p>}
+            {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>}
           </div>
 
           <button

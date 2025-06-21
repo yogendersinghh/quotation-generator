@@ -28,17 +28,7 @@ export const useCreateProduct = () => {
 
   const createProduct = async (productData: Omit<CreateProductRequest, 'productImage'>, imageFile?: File) => {
     try {
-      let productImage = '';
-      
-      if (imageFile) {
-        const uploadResult = await uploadImageMutation.mutateAsync(imageFile);
-        productImage = uploadResult.filename;
-      }
-
-      await createProductMutation.mutateAsync({
-        ...productData,
-        productImage,
-      });
+      await createProductMutation.mutateAsync(productData);
     } catch (error) {
       // Error handling is done in the mutation callbacks
       throw error;

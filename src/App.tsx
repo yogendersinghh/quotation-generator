@@ -9,6 +9,8 @@ import Quotations from './pages/Quotations';
 import Users from './pages/Users';
 import Layout from './components/Layout';
 import Customers from './pages/Customers';
+import Categories from './pages/Categories';
+import Models from './pages/Models';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
 function App() {
@@ -18,7 +20,7 @@ function App() {
         <Toaster
           position="top-center"
           toastOptions={{
-            duration: 6000, // 6 seconds
+            duration: 1000, // 1 second
             style: {
               background: '#363636',
               color: '#fff',
@@ -28,7 +30,7 @@ function App() {
               textAlign: 'center',
             },
             success: {
-              duration: 5000, // 5 seconds
+              duration: 1000, // 1 second
               style: {
                 background: '#059669', // Emerald-600 color, more eye-friendly
                 color: '#fff',
@@ -40,7 +42,7 @@ function App() {
               },
             },
             error: {
-              duration: 6000, // 6 seconds
+              duration: 1000, // 1 second
               style: {
                 background: '#dc2626', // Red-600 color, more eye-friendly
                 color: '#fff',
@@ -82,6 +84,8 @@ function App() {
             <Route path="products" element={<Products />} />
             <Route path="quotations" element={<Quotations />} />
             <Route path="customers" element={<Customers />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="models" element={<Models />} />
           </Route>
         </Routes>
       </AuthProvider>

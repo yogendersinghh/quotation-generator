@@ -18,6 +18,15 @@ export interface CreateCategoryResponse {
   category: Category;
 }
 
+export interface UpdateCategoryResponse {
+  message: string;
+  category: Category;
+}
+
+export interface DeleteCategoryResponse {
+  message: string;
+}
+
 export interface GetCategoriesResponse {
   success: boolean;
   categories: Category[];

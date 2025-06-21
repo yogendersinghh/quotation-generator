@@ -20,6 +20,7 @@ export const useUpdateClient = () => {
     onError: (error: any) => {
       console.error('Update client mutation error:', error);
       const errorMessage = error.response?.data?.message || 'Failed to update customer. Please try again.';
+      console.error('Error Message:', errorMessage);
       toast.error(errorMessage);
     },
   });

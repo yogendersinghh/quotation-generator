@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { authApi } from '../api';
 import { tokenStorage } from '../utils';
 import { useAuthContext } from '../context/AuthContext';
+import { useAuthStore } from '../../../store/auth';
 import type { LoginCredentials } from '../types';
 
 export const useAuth = () => {
@@ -11,6 +12,7 @@ export const useAuth = () => {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { isAuthenticated, user, setAuthState } = useAuthContext();
+  const setUser = useAuthStore((state) => state.setUser);
 
   const login = useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
@@ -40,16 +42,33 @@ export const useAuth = () => {
       // Update auth context state
       setAuthState(data);
       
+      // Update Zustand store for components that use it
+      setUser(data.user);
+      
       // Invalidate any existing queries
       queryClient.clear();
       
       // Show success message
       toast.success('Successfully logged in!');
       
-      // Redirect to dashboard or the attempted URL
-      const from = (location.state as any)?.from || '/dashboard';
-      console.log('Redirecting to:', from);
-      navigate(from, { replace: true });
+      // Determine redirect path based on user role
+      const from = (location.state as any)?.from;
+      let redirectPath = '/dashboard'; // Default for admin
+      
+      if (from) {
+        // If there's a specific page they were trying to access, go there
+        redirectPath = from;
+      } else if (data.user.role === 'manager') {
+        // Managers go to products page
+        redirectPath = '/products';
+      } else if (data.user.role === 'user') {
+        // Regular users go to products page
+        redirectPath = '/products';
+      }
+      // Admins go to dashboard (default)
+      
+      console.log('Redirecting to:', redirectPath, 'for role:', data.user.role);
+      navigate(redirectPath, { replace: true });
     },
     onError: (error: Error) => {
       console.error('Login mutation error:', error);

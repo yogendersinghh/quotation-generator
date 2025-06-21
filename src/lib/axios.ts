@@ -3,7 +3,7 @@ import { tokenStorage } from '../features/auth/utils';
 
 // Create axios instance with base URL
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:3033', // Make sure this matches your backend URL
+  baseURL: 'https://cms-be.yogendersingh.tech', // Make sure this matches your backend URL
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

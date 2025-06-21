@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { RegisterCredentials } from '../api';
 import { useCreateUser } from '../hooks/useCreateUser';
-import { X, User, Mail, Lock, Shield, CheckCircle2, XCircle } from 'lucide-react';
+import { X, User, Mail, Lock, Shield, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
 
 // Define the validation schema for the registration form
 const createUserSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address').min(1, 'Email is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['admin', 'manager', 'user'], { required_error: 'Role is required' }),
+  password: z.string(),
+  role: z.enum(['admin', 'manager'], { required_error: 'Role is required' }),
   userStatus: z.enum(['active', 'blocked'], { required_error: 'User status is required' }),
 });
 
@@ -23,6 +23,7 @@ type CreateUserFormProps = {
 
 export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
   const { mutate: createUser, isPending } = useCreateUser();
+  const [showPassword, setShowPassword] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateUserFormData>({
     resolver: zodResolver(createUserSchema),
@@ -40,7 +41,6 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
   const roleOptions = [
     { value: 'admin', label: 'Administrator' },
     { value: 'manager', label: 'Manager' },
-    { value: 'user', label: 'User' },
   ];
 
   const userStatusOptions = [
@@ -99,12 +99,25 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
                 <Lock className="h-5 w-5 text-gray-400" />
               </div>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 id="password"
                 {...register('password')}
-                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md"
                 placeholder="••••••••"
               />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
             {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>}
           </div>

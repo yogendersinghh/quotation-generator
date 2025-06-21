@@ -13,7 +13,7 @@ const updateUserSchema = z.object({
   email: z.string().email('Invalid email address').min(1, 'Email is required').optional(),
   // Password should not be pre-filled or required for update unless explicitly provided
   // For password changes, a separate form/flow is often recommended.
-  role: z.enum(['admin', 'manager', 'user'], { required_error: 'Role is required' }).optional(),
+  role: z.enum(['admin', 'manager'], { required_error: 'Role is required' }).optional(),
   userStatus: z.enum(['active', 'blocked'], { required_error: 'User status is required' }).optional(),
 });
 
@@ -59,7 +59,6 @@ export const EditUserForm = ({ user, onClose }: EditUserFormProps) => {
   const roleOptions = [
     { value: 'admin', label: 'Administrator' },
     { value: 'manager', label: 'Manager' },
-    { value: 'user', label: 'User' },
   ];
 
   const userStatusOptions = [

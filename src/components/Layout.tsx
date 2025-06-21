@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../features/auth/hooks/useAuth';
-import { LayoutDashboard, Package, FileText, Users as UsersIcon, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, FileText, Users as UsersIcon, LogOut, FolderPlus } from 'lucide-react';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -10,9 +10,11 @@ function Layout() {
   // Define navigation items with role restrictions
   const allNavigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin'] },
-    { name: 'Product', href: '/products', icon: Package, roles: ['admin', 'manager', 'user'] },
-    { name: 'Customers Info', href: '/customers', icon: UsersIcon, roles: ['admin', 'manager', 'user'] },
-    { name: 'Create Quotations', href: '/quotations', icon: FileText, roles: ['admin', 'manager', 'user'] },
+    { name: 'Product', href: '/products', icon: Package, roles: ['admin', 'manager'] },
+    // { name: 'Categories', href: '/categories', icon: FolderPlus, roles: ['admin', 'manager'] },
+    // { name: 'Models', href: '/models', icon: Package, roles: ['admin', 'manager'] },
+    { name: 'Customers Info', href: '/customers', icon: UsersIcon, roles: ['admin', 'manager'] },
+    { name: 'Create Quotations', href: '/quotations', icon: FileText, roles: ['admin', 'manager'] },
     { name: 'Users', href: '/users', icon: UsersIcon, roles: ['admin'] },
   ];
 

@@ -7,9 +7,10 @@ export interface Product {
   features: string[];
   price: number;
   warranty: string;
-  category: string | null;
+  categories: string[];
   createdAt: string;
   updatedAt: string;
+  notes?: string;
 }
 
 export interface Pagination {
@@ -32,10 +33,18 @@ export interface CreateProductRequest {
   features: string;
   price: number;
   warranty: string;
-  category: string;
+  categories: string[];
+  notes?: string;
 }
 
 export interface CreateProductResponse {
+  product: Product;
+  message: string;
+}
+
+export type UpdateProductRequest = Partial<CreateProductRequest>;
+
+export interface UpdateProductResponse {
   product: Product;
   message: string;
 }

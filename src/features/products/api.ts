@@ -1,5 +1,12 @@
 import { apiClient } from '../../lib/axios';
-import { CreateProductRequest, CreateProductResponse, ProductsResponse, UploadImageResponse } from './types';
+import {
+  CreateProductRequest,
+  CreateProductResponse,
+  ProductsResponse,
+  UpdateProductRequest,
+  UpdateProductResponse,
+  UploadImageResponse,
+} from './types';
 
 const PRODUCTS_ENDPOINT = '/api/products';
 const UPLOAD_ENDPOINT = '/api/upload/product-image';
@@ -65,6 +72,46 @@ export const productsApi = {
       return data;
     } catch (error: any) {
       console.error('Create product error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
+  },
+
+  updateProduct: async ({
+    id,
+    productData,
+  }: {
+    id: string;
+    productData: UpdateProductRequest;
+  }): Promise<UpdateProductResponse> => {
+    console.log(`Updating product ${id}:`, productData);
+    try {
+      const { data } = await apiClient.put<UpdateProductResponse>(
+        `${PRODUCTS_ENDPOINT}/${id}`,
+        productData
+      );
+      console.log('Update product response:', data);
+      return data;
+    } catch (error: any) {
+      console.error('Update product error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
+  },
+
+  deleteProduct: async (id: string): Promise<void> => {
+    console.log(`Deleting product ${id}`);
+    try {
+      await apiClient.delete(`${PRODUCTS_ENDPOINT}/${id}`);
+      console.log('Delete product response: success');
+    } catch (error: any) {
+      console.error('Delete product error:', {
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,
