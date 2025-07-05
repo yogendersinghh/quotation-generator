@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../features/auth/hooks/useAuth';
 import { useAuthContext } from '../features/auth/context/AuthContext';
 import { useUsers } from '../features/users/hooks/useUsers';
-import { useQuotations, useUpdateQuotationStatus, Quotation, QuotationStatus, AdminStatus, DashboardStats } from '../features/quotations';
+import { useQuotations, useUpdateQuotationStatus, useDashboardStats, Quotation, QuotationStatus, AdminStatus, DashboardStats } from '../features/quotations';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, MoreVertical, Check, X } from 'lucide-react';
 // import { AuthDebug } from '../components/AuthDebug';
 
@@ -33,6 +34,7 @@ import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircl
 function Dashboard() {
   const { user } = useAuth();
   const { isInitialized } = useAuthContext();
+  const queryClient = useQueryClient();
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [debouncedUserSearch, setDebouncedUserSearch] = useState('');
@@ -52,6 +54,7 @@ function Dashboard() {
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
   // Ref for the user dropdown
   const userDropdownRef = useRef<HTMLDivElement>(null);
@@ -91,6 +94,11 @@ function Dashboard() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Monitor selectedUser changes
+  useEffect(() => {
+    console.log('selectedUser changed to:', selectedUser);
+  }, [selectedUser]);
+
   // Handle clicking outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -118,13 +126,23 @@ function Dashboard() {
     enabled: isInitialized && !!user, // Only fetch when auth is initialized and user exists
   });
 
-  // Fetch quotations for stats cards (unfiltered, all data for user)
-  const { data: statsQuotationsData, isLoading: statsQuotationsLoading } = useQuotations({
-    page: 1,
-    limit: 1000, // Large enough to get all for stats (or use a dedicated stats endpoint if available)
-    userId: selectedUser,
+  // Fetch dashboard statistics for selected user
+  const { data: dashboardStatsData, isLoading: dashboardStatsLoading, refetch: refetchDashboardStats } = useDashboardStats(selectedUser || undefined);
+  
+  console.log('Dashboard stats hook debug:', {
+    selectedUser,
+    dashboardStatsData,
+    dashboardStatsLoading,
+    hasSelectedUser: !!selectedUser,
+    statsValues: dashboardStatsData ? {
+      totalQuotations: dashboardStatsData.totalQuotations,
+      pendingApprovals: dashboardStatsData.pendingApprovals,
+      totalClients: dashboardStatsData.totalClients,
+      underDevelopment: dashboardStatsData.underDevelopment,
+      booked: dashboardStatsData.booked,
+      lost: dashboardStatsData.lost,
+    } : null
   });
-  const statsQuotations = statsQuotationsData?.quotations || [];
 
   // Fetch quotations for selected user with server-side filtering (for table)
   const { data: quotationsData, isLoading: quotationsLoading, error: quotationsError } = useQuotations({
@@ -143,13 +161,31 @@ function Dashboard() {
   // Update quotation status mutation
   const updateQuotationStatus = useUpdateQuotationStatus();
 
+  // Monitor updateQuotationStatus mutation
+  useEffect(() => {
+    if (updateQuotationStatus.isSuccess) {
+      console.log('Quotation status updated successfully');
+    }
+    if (updateQuotationStatus.isError) {
+      console.error('Failed to update quotation status:', updateQuotationStatus.error);
+    }
+  }, [updateQuotationStatus.isSuccess, updateQuotationStatus.isError, updateQuotationStatus.error]);
+
   // Handle user selection
   const handleUserSelect = useCallback((userId: string) => {
+    console.log('handleUserSelect called with userId:', userId);
     setSelectedUser(userId);
     setIsUserDropdownOpen(false);
     setUserSearchTerm('');
     setCurrentPage(1); // Reset to first page when user changes
-  }, []);
+    
+    // Invalidate dashboard stats cache and refetch
+    queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    setTimeout(() => {
+      console.log('Triggering dashboard stats refetch for userId:', userId);
+      refetchDashboardStats();
+    }, 100);
+  }, [refetchDashboardStats, queryClient]);
 
   // Get users from API response
   const users = usersData?.users || [];
@@ -171,36 +207,41 @@ function Dashboard() {
     selectedCustomer: selectedUser
   });
 
-  // Calculate dashboard stats based on UNFILTERED quotations data (for stats cards)
-  const dashboardStats: DashboardStats = useMemo(() => {
-    if (!statsQuotationsData || statsQuotationsLoading) {
-      return {
-        totalQuotations: 0,
-        pendingApprovals: 0,
-        totalClients: 0,
-        underDevelopment: 0,
-        booked: 0,
-        lost: 0,
-      };
-    }
-
-    return {
-      totalQuotations: statsQuotations.length,
-      pendingApprovals: statsQuotations.filter(q => q.status === 'pending').length,
-      totalClients: new Set(statsQuotations.map(q => q.client?.name || 'Unknown').filter(name => name !== 'Unknown')).size,
-      underDevelopment: statsQuotations.filter(q => q.converted === 'Under Development').length,
-      booked: statsQuotations.filter(q => q.converted === 'Booked').length,
-      lost: statsQuotations.filter(q => q.converted === 'Lost').length,
-    };
-  }, [statsQuotationsData, statsQuotationsLoading, statsQuotations.length]); // More stable dependencies
+  // Use dashboard stats from API
+  const dashboardStats: DashboardStats = dashboardStatsData || {
+    totalQuotations: 0,
+    pendingApprovals: 0,
+    totalClients: 0,
+    underDevelopment: 0,
+    booked: 0,
+    lost: 0,
+  };
 
 
 
   // Handle quotation status update
   const handleActionSelect = useCallback((quotationId: string, action: 'approve' | 'reject') => {
+    console.log('Updating quotation status:', { quotationId, action });
     updateQuotationStatus.mutate({
       quotationId,
-      adminStatus: action === 'approve' ? 'approved' : 'rejected'
+      action
+    }, {
+      onSuccess: () => {
+        setNotification({
+          type: 'success',
+          message: `Quotation ${action}d successfully!`
+        });
+        // Auto-hide notification after 3 seconds
+        setTimeout(() => setNotification(null), 3000);
+      },
+      onError: () => {
+        setNotification({
+          type: 'error',
+          message: `Failed to ${action} quotation. Please try again.`
+        });
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => setNotification(null), 5000);
+      }
     });
     setActionDropdownOpen(null);
   }, [updateQuotationStatus]);
@@ -298,6 +339,31 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       {/* <AuthDebug /> */}
+      
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg ${
+          notification.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-center">
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 mr-2" />
+            ) : (
+              <AlertCircle className="w-5 h-5 mr-2" />
+            )}
+            <span className="font-medium">{notification.message}</span>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
         <div className="flex items-center space-x-3">
@@ -460,7 +526,7 @@ function Dashboard() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Total Quotations</h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    {statsQuotationsLoading ? '...' : dashboardStats.totalQuotations}
+                    {dashboardStatsLoading ? '...' : dashboardStats.totalQuotations}
                   </p>
                 </div>
               </div>
@@ -474,7 +540,7 @@ function Dashboard() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Pending Approval</h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    {statsQuotationsLoading ? '...' : dashboardStats.pendingApprovals}
+                    {dashboardStatsLoading ? '...' : dashboardStats.pendingApprovals}
                   </p>
                 </div>
               </div>
@@ -488,7 +554,7 @@ function Dashboard() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Total Clients</h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    {statsQuotationsLoading ? '...' : dashboardStats.totalClients}
+                    {dashboardStatsLoading ? '...' : dashboardStats.totalClients}
                   </p>
                 </div>
               </div>
@@ -502,7 +568,7 @@ function Dashboard() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Under Development</h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    {statsQuotationsLoading ? '...' : dashboardStats.underDevelopment}
+                    {dashboardStatsLoading ? '...' : dashboardStats.underDevelopment}
                   </p>
                 </div>
               </div>
@@ -516,7 +582,7 @@ function Dashboard() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Booked</h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    {statsQuotationsLoading ? '...' : dashboardStats.booked}
+                    {dashboardStatsLoading ? '...' : dashboardStats.booked}
                   </p>
                 </div>
               </div>
@@ -530,7 +596,7 @@ function Dashboard() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">Lost</h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    {statsQuotationsLoading ? '...' : dashboardStats.lost}
+                    {dashboardStatsLoading ? '...' : dashboardStats.lost}
                   </p>
                 </div>
               </div>
@@ -755,19 +821,29 @@ function Dashboard() {
                               <div className="py-1" role="menu" aria-orientation="vertical">
                                 <button
                                   onClick={() => handleActionSelect(quotation._id, 'approve')}
-                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700"
+                                  disabled={updateQuotationStatus.isPending}
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                   role="menuitem"
                                 >
-                                  <Check className="w-4 h-4 mr-2 text-green-500" />
-                                  Approve
+                                  {updateQuotationStatus.isPending ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-500 mr-2"></div>
+                                  ) : (
+                                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                                  )}
+                                  {updateQuotationStatus.isPending ? 'Approving...' : 'Approve'}
                                 </button>
                                 <button
                                   onClick={() => handleActionSelect(quotation._id, 'reject')}
-                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700"
+                                  disabled={updateQuotationStatus.isPending}
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                   role="menuitem"
                                 >
-                                  <X className="w-4 h-4 mr-2 text-red-500" />
-                                  Reject
+                                  {updateQuotationStatus.isPending ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-500 mr-2"></div>
+                                  ) : (
+                                    <X className="w-4 h-4 mr-2 text-red-500" />
+                                  )}
+                                  {updateQuotationStatus.isPending ? 'Rejecting...' : 'Reject'}
                                 </button>
                               </div>
                             </div>

@@ -49,6 +49,8 @@ export type Quotation = {
   supply: string;
   termsAndConditions: string;
   signatureImage: string;
+  relatedProducts: string[];
+  suggestedProducts: string[];
   __v: number;
 };
 

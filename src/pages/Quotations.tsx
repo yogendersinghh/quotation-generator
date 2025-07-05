@@ -255,7 +255,7 @@ function Quotations() {
                                 <Edit2 className="h-4 w-4 mr-2" />
                                 Edit
                               </button>
-                              <button
+                              {/* <button
                                 onClick={() => {
                                   handleDelete(q._id);
                                   setActionDropdownOpen(null);
@@ -265,7 +265,7 @@ function Quotations() {
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
-                              </button>
+                              </button> */}
                             </div>
                           </div>
                         )}
@@ -304,6 +304,8 @@ function Quotations() {
               </div>
             </div>
           )}
+
+
         </div>
       )}
     </div>

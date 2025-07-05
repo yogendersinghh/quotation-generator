@@ -56,6 +56,8 @@ function CreateQuotation() {
   // Step 2 fields
   const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<ProductOption[]>([]);
+  const [suggestedProducts, setSuggestedProducts] = useState<ProductOption[]>([]);
   const [machineInstall, setMachineInstall] = useState({
     qty: "",
     unit: "",
@@ -151,6 +153,9 @@ GST : 09AACFF0291J1ZF</p>`);
         });
         // Store products for mapping after productOptions is loaded
         setFetchedProducts(data.products || []);
+        // Store related and suggested products for mapping
+        setFetchedRelatedProducts(data.relatedProducts || []);
+        setFetchedSuggestedProducts(data.suggestedProducts || []);
       })
       .catch(() => alert("Failed to fetch quotation details."))
       .finally(() => setIsEditLoading(false));
@@ -158,6 +163,8 @@ GST : 09AACFF0291J1ZF</p>`);
 
   // Map fetched products to productOptions for Select
   const [fetchedProducts, setFetchedProducts] = useState<any[]>([]);
+  const [fetchedRelatedProducts, setFetchedRelatedProducts] = useState<string[]>([]);
+  const [fetchedSuggestedProducts, setFetchedSuggestedProducts] = useState<string[]>([]);
   useEffect(() => {
     if (!id || !productsData || !fetchedProducts.length) return;
     // Map fetched product IDs to productOptions
@@ -180,6 +187,23 @@ GST : 09AACFF0291J1ZF</p>`);
       };
     }));
   }, [id, productsData, fetchedProducts]);
+
+  // Map fetched related and suggested products
+  useEffect(() => {
+    if (!id || !productsData) return;
+    
+    // Map related products
+    const related = fetchedRelatedProducts
+      .map((productId) => productOptions.find((opt) => opt.value === productId))
+      .filter(Boolean);
+    setRelatedProducts(related as ProductOption[]);
+    
+    // Map suggested products
+    const suggested = fetchedSuggestedProducts
+      .map((productId) => productOptions.find((opt) => opt.value === productId))
+      .filter(Boolean);
+    setSuggestedProducts(suggested as ProductOption[]);
+  }, [id, productsData, fetchedRelatedProducts, fetchedSuggestedProducts]);
 
   // Don't render anything until auth is initialized
   if (!isInitialized) {
@@ -303,8 +327,8 @@ GST : 09AACFF0291J1ZF</p>`);
         termsAndConditions: tnc || "Standard terms and conditions apply",
         signatureImage: signatureFileName,
         totalAmount: calculatePrice(),
-        relatedProducts: selectedProducts.map(p => p.value),
-        suggestedProducts: selectedProducts.map(p => p.value)
+        relatedProducts: relatedProducts.map(p => p.value),
+        suggestedProducts: suggestedProducts.map(p => p.value)
       };
 
       console.log("Sending quotation data to API:", quotationData);
@@ -754,6 +778,48 @@ GST : 09AACFF0291J1ZF</p>`);
       {/* Step 5 */}
       {step === 5 && (
         <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Related Products (Max 5)
+            </label>
+            <Select<ProductOption, true>
+              isMulti
+              options={productOptions}
+              value={relatedProducts}
+              onChange={(options) => {
+                const limitedOptions = (options as ProductOption[]).slice(0, 5);
+                setRelatedProducts(limitedOptions);
+              }}
+              placeholder={
+                productsLoading ? "Loading products..." : "Select related products (max 5)"
+              }
+              isLoading={productsLoading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Selected: {relatedProducts.length}/5
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Suggested Products (Max 5)
+            </label>
+            <Select<ProductOption, true>
+              isMulti
+              options={productOptions}
+              value={suggestedProducts}
+              onChange={(options) => {
+                const limitedOptions = (options as ProductOption[]).slice(0, 5);
+                setSuggestedProducts(limitedOptions);
+              }}
+              placeholder={
+                productsLoading ? "Loading products..." : "Select suggested products (max 5)"
+              }
+              isLoading={productsLoading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Selected: {suggestedProducts.length}/5
+            </p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Signature Upload
