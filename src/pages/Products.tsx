@@ -14,6 +14,7 @@ import {
   FolderPlus,
 } from "lucide-react";
 import { useProducts } from "../features/products/hooks/useProducts";
+import { useProduct } from "../features/products/hooks/useProduct";
 import type { Product } from "../features/products/types";
 import { useCreateProduct } from "../features/products/hooks/useCreateProduct";
 import { useUpdateProduct } from "../features/products/hooks/useUpdateProduct";
@@ -21,7 +22,7 @@ import { useDeleteProduct } from "../features/products/hooks/useDeleteProduct";
 import { toast } from "react-hot-toast";
 import { useCategories } from "../features/categories/hooks/useCategories";
 import { useModels } from "../features/models/hooks/useModels";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { Model } from "../features/models/types";
 import Select from "react-select";
 
@@ -45,6 +46,8 @@ type ProductFeature = {
 };
 
 function Products() {
+  const navigate = useNavigate();
+  
   // Use the new initialization hook at the very top
   const {
     isInitialized,
@@ -105,6 +108,7 @@ function Products() {
   const [description, setDescription] = useState("");
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(
@@ -135,6 +139,12 @@ function Products() {
     model: modelFilter,
     categories: categoryFilter.join(','),
   } as any);
+
+  // Fetch single product for editing
+  const { data: editingProductData } = useProduct(
+    editingProductId || '',
+    !!editingProductId
+  );
 
   // Fetch models for model select
   const { data: modelsData, isLoading: isLoadingModels } = useModels();
@@ -191,6 +201,39 @@ function Products() {
       refetchCategories();
     }
   }, [isFormOpen, refetchCategories]);
+
+  // Populate form when editing product data is loaded
+  useEffect(() => {
+    if (editingProductData && editingProduct) {
+      console.log("Populating form with product data:", editingProductData);
+      const product = editingProductData;
+      
+      setProductTitle(product.title);
+      setProductModel(typeof product.model === 'object' ? (product.model as any)._id : product.model);
+      setProductFeatures(product.features);
+      setProductPrice(product.price.toString());
+      setProductWarranty(product.warranty);
+      setProductImageFilename(product.productImage || "");
+      
+      if (Array.isArray(product.categories)) {
+        setSelectedCategories(
+          product.categories.map((cat: any) =>
+            typeof cat === "object" && cat !== null ? (cat as any)._id : cat
+          )
+        );
+      } else if (product.categories) {
+        setSelectedCategories([product.categories]);
+      } else {
+        setSelectedCategories([]);
+      }
+      
+      setNotes(product.notes || "");
+      setDescription((product as any).description || "");
+      setQuality(product.quality || "");
+      setSpecification(product.specification || "");
+      setTermsAndCondition(product.termsAndCondition || "");
+    }
+  }, [editingProductData, editingProduct]);
 
   // Debug logging
   console.log("Products component - Debug info:", {
@@ -315,29 +358,8 @@ function Products() {
   };
 
   const handleEditProduct = (product: Product) => {
+    setEditingProductId(product._id);
     setEditingProduct(product);
-    setProductTitle(product.title);
-    setProductModel(typeof product.model === 'object' ? (product.model as any)._id : product.model);
-    setProductFeatures(product.features);
-    setProductPrice(product.price.toString());
-    setProductWarranty(product.warranty);
-    setProductImageFilename(product.productImage || "");
-    if (Array.isArray(product.categories)) {
-      setSelectedCategories(
-        product.categories.map(cat =>
-          typeof cat === "object" && cat !== null ? (cat as any)._id : cat
-        )
-      );
-    } else if (product.categories) {
-      setSelectedCategories([product.categories]);
-    } else {
-      setSelectedCategories([]);
-    }
-    setNotes(product.notes || "");
-    setDescription((product as any).description || "");
-    setQuality(product.quality || "");
-    setSpecification(product.specification || "");
-    setTermsAndCondition(product.termsAndCondition || "");
     setIsFormOpen(true);
   };
 
@@ -400,6 +422,7 @@ function Products() {
   const handleCloseModal = () => {
     setIsFormOpen(false);
     setEditingProduct(null);
+    setEditingProductId(null);
     setProductTitle("");
     setProductModel("");
     setProductFeatures([]);
@@ -493,9 +516,29 @@ function Products() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
         <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Products</h1>
-        <button className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 w-full sm:w-auto mt-2 sm:mt-0">
-          Add Product
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+          <button 
+            onClick={() => navigate('/categories')}
+            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center"
+          >
+            <FolderPlus className="w-4 h-4 mr-2" />
+            Categories
+          </button>
+          <button 
+            onClick={() => navigate('/models')}
+            className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Models
+          </button>
+          <button 
+            onClick={() => setIsFormOpen(true)}
+            className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center justify-center"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Product
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -647,7 +690,7 @@ function Products() {
                   <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-center">
                     {product.productImage ? (
                       <img
-                        src={productImageFilename ? `https://cms-be.yogendersingh.tech/public/products/${productImageFilename}` : ""}
+                        src={`https://cms-be.yogendersingh.tech/public/products/${product.productImage}`}
                         alt={product.title}
                         className="h-12 w-12 object-cover rounded"
                       />
@@ -762,12 +805,27 @@ function Products() {
                       onChange={handleImageChange}
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                     />
+                    {/* Show existing image when editing */}
+                    {editingProduct && productImageFilename && !productImageFile && (
+                      <div className="flex items-center space-x-2">
+                        <img
+                          src={`https://cms-be.yogendersingh.tech/public/products/${productImageFilename}`}
+                          alt="Current Product Image"
+                          className="h-16 w-16 rounded object-cover border"
+                        />
+                        <span className="text-xs text-gray-500">Current Image</span>
+                      </div>
+                    )}
+                    {/* Show preview of newly uploaded file */}
                     {productImageFile && (
-                      <img
-                        src={URL.createObjectURL(productImageFile)}
-                        alt="Preview"
-                        className="h-16 w-16 rounded object-cover"
-                      />
+                      <div className="flex items-center space-x-2">
+                        <img
+                          src={URL.createObjectURL(productImageFile)}
+                          alt="New Image Preview"
+                          className="h-16 w-16 rounded object-cover border"
+                        />
+                        <span className="text-xs text-gray-500">New Image</span>
+                      </div>
                     )}
                   </div>
                 </div>

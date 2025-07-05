@@ -7,6 +7,7 @@ export type RegisterCredentials = {
   name: string;
   role: string;
   userStatus: string;
+  signature: string;
 };
 
 export type RegisterResponse = {
@@ -19,6 +20,7 @@ export type UpdateUserData = {
   email?: string;
   role?: string;
   userStatus?: string;
+  signature?: string;
 };
 
 const USERS_ENDPOINT = '/api/users';

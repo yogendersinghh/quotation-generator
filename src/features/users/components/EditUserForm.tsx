@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -6,6 +6,7 @@ import { UpdateUserData } from '../api';
 import { useUpdateUser } from '../hooks/useUpdateUser';
 import { User as UserType } from '../hooks/useUsers';
 import { X, User, Mail, Lock, Shield, CheckCircle2 } from 'lucide-react';
+import { apiClient } from '../../../lib/axios';
 
 // Define the validation schema for the update user form
 const updateUserSchema = z.object({
@@ -15,6 +16,7 @@ const updateUserSchema = z.object({
   // For password changes, a separate form/flow is often recommended.
   role: z.enum(['admin', 'manager'], { required_error: 'Role is required' }).optional(),
   userStatus: z.enum(['active', 'blocked'], { required_error: 'User status is required' }).optional(),
+  signature: z.string().optional(),
 });
 
 type UpdateUserFormData = z.infer<typeof updateUserSchema>;
@@ -26,6 +28,9 @@ type EditUserFormProps = {
 
 export const EditUserForm = ({ user, onClose }: EditUserFormProps) => {
   const { mutate: updateUser, isPending } = useUpdateUser();
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string>("");
+  const [signatureFilename, setSignatureFilename] = useState<string>("");
 
   const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<UpdateUserFormData>({
     resolver: zodResolver(updateUserSchema),
@@ -46,11 +51,19 @@ export const EditUserForm = ({ user, onClose }: EditUserFormProps) => {
   }, [user, setValue]);
 
   const onSubmit = async (data: UpdateUserFormData) => {
+    const updateData = { ...data };
+    if (signatureFilename) {
+      updateData.signature = signatureFilename;
+    }
+    
     updateUser({
       userId: user._id,
-      userData: data,
+      userData: updateData,
     }, {
       onSuccess: () => {
+        setSignatureFile(null);
+        setSignaturePreview("");
+        setSignatureFilename("");
         onClose();
       },
     });
@@ -65,6 +78,18 @@ export const EditUserForm = ({ user, onClose }: EditUserFormProps) => {
     { value: 'active', label: 'Active' },
     { value: 'blocked', label: 'Blocked' },
   ];
+
+  // Add signature upload function
+  const uploadSignature = async (file: File) => {
+    const formData = new FormData();
+    formData.append('signature', file);
+    const response = await apiClient.post('/api/upload/signature', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data.filename;
+  };
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
@@ -152,6 +177,35 @@ export const EditUserForm = ({ user, onClose }: EditUserFormProps) => {
               </select>
             </div>
             {errors.userStatus && <p className="mt-1 text-sm text-red-600">{errors.userStatus.message}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Signature</label>
+            <input
+              type="file"
+              id="signature"
+              accept="image/*"
+              onChange={async (e) => {
+                if (e.target.files && e.target.files[0]) {
+                  const file = e.target.files[0];
+                  setSignatureFile(file);
+                  setSignaturePreview(URL.createObjectURL(file));
+                  try {
+                    // Upload signature image and set filename
+                    const uploadedFilename = await uploadSignature(file);
+                    setSignatureFilename(uploadedFilename);
+                  } catch (error) {
+                    console.error('Failed to upload signature:', error);
+                    alert('Failed to upload signature. Please try again.');
+                  }
+                }
+              }}
+              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            {signaturePreview && (
+              <img src={signaturePreview} alt="Signature Preview" className="mt-2 h-16 border rounded" />
+            )}
+            {!signaturePreview && <p className="text-xs text-gray-400 mt-1">Upload a new signature image (optional)</p>}
           </div>
 
           <button

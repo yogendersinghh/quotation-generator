@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { RegisterCredentials } from '../api';
 import { useCreateUser } from '../hooks/useCreateUser';
 import { X, User, Mail, Lock, Shield, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
+import { apiClient } from '../../../lib/axios';
 
 // Define the validation schema for the registration form
 const createUserSchema = z.object({
@@ -24,16 +25,36 @@ type CreateUserFormProps = {
 export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
   const { mutate: createUser, isPending } = useCreateUser();
   const [showPassword, setShowPassword] = useState(false);
+  const [signatureFile, setSignatureFile] = useState<File | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string>("");
+  const [signatureFilename, setSignatureFilename] = useState<string>("");
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateUserFormData>({
     resolver: zodResolver(createUserSchema),
   });
 
   const onSubmit = async (data: CreateUserFormData) => {
-    createUser(data, {
+    console.log('Form submitted with data:', data);
+    console.log('Signature filename:', signatureFilename);
+    console.log('Form errors:', errors);
+    
+    if (!signatureFilename) {
+      alert('Signature is required');
+      return;
+    }
+    
+    console.log('Calling createUser with:', { ...data, signature: signatureFilename });
+    createUser({ ...data, signature: signatureFilename }, {
       onSuccess: () => {
+        console.log('User created successfully');
         reset();
+        setSignatureFile(null);
+        setSignaturePreview("");
+        setSignatureFilename("");
         onClose();
+      },
+      onError: (error) => {
+        console.error('Error creating user:', error);
       },
     });
   };
@@ -47,6 +68,25 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
     { value: 'active', label: 'Active' },
     { value: 'blocked', label: 'Blocked' },
   ];
+
+  // Add signature upload function
+  const uploadSignature = async (file: File) => {
+    console.log('Uploading signature file:', file.name);
+    const formData = new FormData();
+    formData.append('signature', file);
+    try {
+      const response = await apiClient.post('/api/upload/signature', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('Signature upload response:', response.data);
+      return response.data.filename;
+    } catch (error) {
+      console.error('Signature upload error:', error);
+      throw error;
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
@@ -164,6 +204,38 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
               </select>
             </div>
             {errors.userStatus && <p className="mt-1 text-sm text-red-600">{errors.userStatus.message}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="signature" className="block text-sm font-medium text-gray-700">Signature *</label>
+            <input
+              type="file"
+              id="signature"
+              accept="image/*"
+              onChange={async (e) => {
+                console.log('File input changed:', e.target.files);
+                if (e.target.files && e.target.files[0]) {
+                  const file = e.target.files[0];
+                  console.log('Selected file:', file.name, file.size);
+                  setSignatureFile(file);
+                  setSignaturePreview(URL.createObjectURL(file));
+                  try {
+                    // Upload signature image and set filename
+                    const uploadedFilename = await uploadSignature(file);
+                    console.log('Uploaded filename:', uploadedFilename);
+                    setSignatureFilename(uploadedFilename);
+                  } catch (error) {
+                    console.error('Failed to upload signature:', error);
+                    alert('Failed to upload signature. Please try again.');
+                  }
+                }
+              }}
+              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            {signaturePreview && (
+              <img src={signaturePreview} alt="Signature Preview" className="mt-2 h-16 border rounded" />
+            )}
+            {!signaturePreview && <p className="text-xs text-gray-400 mt-1">Upload a signature image (required)</p>}
           </div>
 
           <button

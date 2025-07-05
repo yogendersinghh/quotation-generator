@@ -12,6 +12,22 @@ const PRODUCTS_ENDPOINT = '/api/products';
 const UPLOAD_ENDPOINT = '/api/upload/product-image';
 
 export const productsApi = {
+  getProductById: async (id: string): Promise<any> => {
+    console.log(`Fetching product by ID: ${id}`);
+    try {
+      const { data } = await apiClient.get(`${PRODUCTS_ENDPOINT}/${id}`);
+      console.log('Get product by ID response:', data);
+      return data;
+    } catch (error: any) {
+      console.error('Get product by ID error:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      throw error;
+    }
+  },
+
   getProducts: async (params?: {
     page?: number;
     limit?: number;
