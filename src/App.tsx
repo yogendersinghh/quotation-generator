@@ -88,6 +88,7 @@ function App() {
             <Route path="categories" element={<Categories />} />
             <Route path="models" element={<Models />} />
             <Route path="quotations/create" element={<CreateQuotation />} />
+            <Route path="quotations/edit/:id" element={<CreateQuotation />} />
           </Route>
         </Routes>
       </AuthProvider>

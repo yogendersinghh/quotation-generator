@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuthStore } from "../store/auth";
 import { useAuthContext } from "../features/auth/context/AuthContext";
 import { CheckCircle2, X } from "lucide-react";
 import Select, { MultiValue } from "react-select";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useClients } from "../features/clients/hooks/useClients";
 import { useProducts } from "../features/products/hooks/useProducts";
 import { tokenStorage } from "../features/auth/utils";
@@ -37,6 +37,7 @@ export interface Product {
 }
 
 function CreateQuotation() {
+  const { id } = useParams();
   const user = useAuthStore((state) => state.user);
   const { isInitialized } = useAuthContext();
   const navigate = useNavigate();
@@ -83,6 +84,8 @@ GST : 09AACFF0291J1ZF</p>`);
   // Step 5 fields
   const [signature, setSignature] = useState<File | null>(null);
   const [signatureUrl, setSignatureUrl] = useState("");
+  const [signatureUploadLoading, setSignatureUploadLoading] = useState(false);
+  const [signatureFileName, setSignatureFileName] = useState("");
 
   // Enhancement: Display options for product info
   const [displayOptions, setDisplayOptions] = useState<{
@@ -94,6 +97,8 @@ GST : 09AACFF0291J1ZF</p>`);
   const [customNotes, setCustomNotes] = useState<{
     [productId: string]: string;
   }>({});
+
+  const [isEditLoading, setIsEditLoading] = useState(false);
 
   const { data: clientsData, isLoading: clientsLoading } = useClients({
     limit: 1000,
@@ -120,8 +125,73 @@ GST : 09AACFF0291J1ZF</p>`);
     })
   );
 
+  // Fetch quotation for edit mode
+  useEffect(() => {
+    if (!id) return;
+    setIsEditLoading(true);
+    apiClient.get(`/api/quotations/${id}`)
+      .then(res => {
+        const data = res.data;
+        setTitle(data.title || "");
+        setCustomer(data.client ? { value: data.client._id, label: data.client.name } : null);
+        setSubject(data.subject || "");
+        setFormalMessage(data.formalMessage || "");
+        setNotes(data.notes || "");
+        setBilling(data.billingDetails || "");
+        setSupply(data.supply || "");
+        setIC(data.installationAndCommissioning || "");
+        setTnc(data.termsAndConditions || "");
+        setSignatureUrl(data.signatureImage ? `https://cms-be.yogendersingh.tech/public/signatures/${data.signatureImage}` : "");
+        setSignatureFileName(data.signatureImage || ""); // Ensure this is always set from fetched data
+        setMachineInstall({
+          qty: data.machineInstallation?.quantity?.toString() || "",
+          unit: data.machineInstallation?.unit || "",
+          price: data.machineInstallation?.price?.toString() || "",
+          total: data.machineInstallation?.total?.toString() || "",
+        });
+        // Store products for mapping after productOptions is loaded
+        setFetchedProducts(data.products || []);
+      })
+      .catch(() => alert("Failed to fetch quotation details."))
+      .finally(() => setIsEditLoading(false));
+  }, [id]);
+
+  // Map fetched products to productOptions for Select
+  const [fetchedProducts, setFetchedProducts] = useState<any[]>([]);
+  useEffect(() => {
+    if (!id || !productsData || !fetchedProducts.length) return;
+    // Map fetched product IDs to productOptions
+    const selected = fetchedProducts.map((p) =>
+      productOptions.find((opt) => opt.value === p.product._id)
+    ).filter(Boolean);
+    setSelectedProducts(selected as ProductOption[]);
+    setProductRows(fetchedProducts.map((p) => {
+      const opt = productOptions.find((opt) => opt.value === p.product._id);
+      return {
+        product: opt || {
+          value: p.product._id,
+          label: p.product.title,
+          image: p.product.productImage,
+          description: p.product.description,
+          notes: p.product.notes,
+        },
+        qty: p.quantity?.toString() || "",
+        unit: p.unit || "",
+      };
+    }));
+  }, [id, productsData, fetchedProducts]);
+
   // Don't render anything until auth is initialized
   if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Show loading spinner if editing and loading
+  if (isEditLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -152,11 +222,26 @@ GST : 09AACFF0291J1ZF</p>`);
   };
 
   // Signature upload
-  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSignatureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSignature(file);
       setSignatureUrl(URL.createObjectURL(file));
+      setSignatureUploadLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append('signature', file);
+        const response = await apiClient.post('/api/upload/signature', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        console.log("response.data.fileName",response.data.filename)
+        setSignatureFileName(response.data.filename);
+      } catch (err) {
+        alert('Failed to upload signature.');
+        setSignatureFileName("");
+      } finally {
+        setSignatureUploadLoading(false);
+      }
     }
   };
 
@@ -177,38 +262,6 @@ GST : 09AACFF0291J1ZF</p>`);
   // Generate quotation and store data
   const handleGeneratePDF = async () => {
     try {
-      // Console log all form data
-      console.log("=== QUOTATION FORM DATA ===");
-      console.log("Step 1 - Basic Information:");
-      console.log("Title:", title);
-      console.log("Customer:", customer);
-      console.log("Subject:", subject);
-      console.log("Formal Message:", formalMessage);
-      
-      console.log("\nStep 2 - Products & Installation:");
-      console.log("Selected Products:", selectedProducts);
-      console.log("Product Rows:", productRows);
-      console.log("Machine Installation:", machineInstall);
-      console.log("Display Options:", displayOptions);
-      console.log("Description/Notes Options:", descNoteOptions);
-      console.log("Custom Notes:", customNotes);
-      
-      console.log("\nStep 3 - Additional Details:");
-      console.log("Notes:", notes);
-      console.log("Billing Details:", billing);
-      console.log("Supply:", supply);
-      console.log("I&C:", ic);
-      
-      console.log("\nStep 4 - Terms & Conditions:");
-      console.log("T&C:", tnc);
-      
-      console.log("\nStep 5 - Signature:");
-      console.log("Signature File:", signature);
-      console.log("Signature URL:", signatureUrl);
-      
-      console.log("\nCalculated Total Price:", calculatePrice());
-      console.log("=== END QUOTATION FORM DATA ===");
-
       // Get authentication token
       const token = tokenStorage.getToken();
       if (!token) {
@@ -248,7 +301,7 @@ GST : 09AACFF0291J1ZF</p>`);
         supply: supply || "Delivery within 30 days",
         installationAndCommissioning: ic || "Installation and commissioning included",
         termsAndConditions: tnc || "Standard terms and conditions apply",
-        signatureImage: signature ? signature.name : "",
+        signatureImage: signatureFileName,
         totalAmount: calculatePrice(),
         relatedProducts: selectedProducts.map(p => p.value),
         suggestedProducts: selectedProducts.map(p => p.value)
@@ -256,17 +309,33 @@ GST : 09AACFF0291J1ZF</p>`);
 
       console.log("Sending quotation data to API:", quotationData);
 
-      // Make API call
-      const response = await apiClient.post('/api/quotations', quotationData);
-      const result = response.data;
-      console.log("Quotation created successfully:", result);
-      // On success, redirect to quotations list
+      let result;
+      if (id) {
+        // Update quotation
+        const response = await apiClient.put(`/api/quotations/${id}`, quotationData);
+        result = response.data;
+      } else {
+        // Create quotation
+        const response = await apiClient.post('/api/quotations', quotationData);
+        result = response.data;
+      }
+      console.log("Quotation saved successfully:", result);
       navigate("/quotations");
       
     } catch (error) {
-      console.error("Error creating quotation:", error);
-      // You might want to show an error message to the user here
-      alert("Failed to create quotation. Please try again.");
+      console.log("🚀 ~ handleGeneratePDF ~ error:", error)
+      // Enhanced error logging
+      const err = error as any;
+      if (err.response) {
+        console.error("API error response:", err.response.data);
+        alert(
+          (err.response.data && err.response.data.message) ||
+            "Failed to save quotation. Please try again."
+        );
+      } else {
+        console.error("Error saving quotation:", err);
+        alert("Failed to save quotation. Please try again.");
+      }
     }
   };
 
@@ -693,8 +762,15 @@ GST : 09AACFF0291J1ZF</p>`);
               type="file"
               accept="image/*"
               onChange={handleSignatureChange}
+              disabled={signatureUploadLoading}
             />
-            {signatureUrl && (
+            {signatureUploadLoading && (
+              <div className="mt-2 flex items-center text-blue-600">
+                <svg className="animate-spin h-5 w-5 mr-2 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                Uploading signature...
+              </div>
+            )}
+            {signatureUrl && !signatureUploadLoading && (
               <img src={signatureUrl} alt="Signature" className="mt-4 h-24" />
             )}
           </div>
@@ -719,7 +795,9 @@ GST : 09AACFF0291J1ZF</p>`);
         ) : (
           <button
             onClick={handleGeneratePDF}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700"
+            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 ${signatureUploadLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={signatureUploadLoading}
+            title={signatureUploadLoading ? 'Please wait for signature upload to finish' : ''}
           >
             <CheckCircle2 className="w-4 h-4 mr-2" /> Generate Quotation
           </button>
