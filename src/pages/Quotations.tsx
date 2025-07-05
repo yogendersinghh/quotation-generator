@@ -1,16 +1,55 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { useAuthContext } from "../features/auth/context/AuthContext";
+import { Quotation } from "../features/quotations/types";
+import { tokenStorage } from "../features/auth/utils";
+import { apiClient } from "../lib/axios";
 
 function Quotations() {
   const navigate = useNavigate();
+  const { user } = useAuthContext();
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchQuotations = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = tokenStorage.getToken();
+        if (!token || !user) {
+          setError("Not authenticated");
+          setLoading(false);
+          return;
+        }
+        // You can adjust fromMonth/toMonth as needed
+        const params = new URLSearchParams({
+          page: "1",
+          limit: "10",
+          sortOrder: "desc",
+          userId: user.id,
+        });
+        const response = await apiClient.get(`/api/quotations?${params.toString()}`);
+        const data = response.data;
+        setQuotations(data.quotations || []);
+      } catch (err: any) {
+        setError(err.message || "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchQuotations();
+    // eslint-disable-next-line
+  }, []);
+
   // Empty state UI
   const EmptyState = () => (
     <div className="bg-white rounded-lg shadow p-12 text-center mt-8">
       <div className="max-w-md mx-auto">
         <div className="relative w-48 h-48 mx-auto mb-6">
           <div className="absolute inset-0 bg-indigo-100 rounded-full opacity-20 animate-pulse"></div>
-          {/* You may need to import FilterX if you want to use it */}
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           No Quotations Available
@@ -43,7 +82,24 @@ function Quotations() {
           Create Quotation
         </button>
       </div>
-      <EmptyState />
+      {loading ? (
+        <div className="text-center py-12">Loading quotations...</div>
+      ) : error ? (
+        <div className="text-center text-red-500 py-12">{error}</div>
+      ) : quotations.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <div className="bg-white rounded-lg shadow p-6 mt-4">
+          <h2 className="text-lg font-semibold mb-4">Your Quotations</h2>
+          <ul>
+            {quotations.map((q) => (
+              <li key={q._id} className="border-b py-2">
+                <span className="font-medium">{q.title}</span> <span className="text-gray-500">({q.quotationRefNumber})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

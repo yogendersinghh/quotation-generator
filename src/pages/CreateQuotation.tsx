@@ -8,6 +8,8 @@ import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 import { useNavigate } from "react-router-dom";
 import { useClients } from "../features/clients/hooks/useClients";
 import { useProducts } from "../features/products/hooks/useProducts";
+import { tokenStorage } from "../features/auth/utils";
+import { apiClient } from "../lib/axios";
 
 // Types
 interface CustomerOption {
@@ -45,7 +47,11 @@ function CreateQuotation() {
   const [title, setTitle] = useState("");
   const [customer, setCustomer] = useState<CustomerOption | null>(null);
   const [subject, setSubject] = useState("");
-  const [formalMessage, setFormalMessage] = useState("");
+  const [formalMessage, setFormalMessage] = useState(`<p><strong>1. Dear Sir,</strong></p>
+
+<p>With reference to your requirement for Air Cooling, we are pleased to submit our proposal for supply & installation of Symphony Industrial / Commercial Air Coolers.</p>
+
+<p>The quotation is for supply of Symphony Natural Air-Cooling solution which delivers continuous fresh, filtered & cool air. Based on your cooling requirement we have calculated the cooling solution as follows:</p>`);
   // Step 2 fields
   const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
@@ -56,8 +62,20 @@ function CreateQuotation() {
     total: "",
   });
   // Step 3 fields
-  const [notes, setNotes] = useState("");
-  const [billing, setBilling] = useState("");
+  const [notes, setNotes] = useState(`<p>Recommended water supply should be less than 400 TDS. All electrical work under customer scope.</p>
+
+<p>Size of wire suitable to ampere rating of the motor which shall be selected by qualified Electrician of the customer.</p>
+
+<p>Use single phase preventer for all three phase machines, Spike buster for all machines & Voltage stabilizer where voltage fluctuates more than 5%.</p>
+
+<p>Any change in quantity shall be charged extra.</p>
+
+<p>Any kind of charges / scope of work which is not specified in above, will be extra as per actual.</p>`);
+  const [billing, setBilling] = useState(`<p><strong>Material will be billed through</strong></p>
+
+<p><strong>M/s FIVE STAR TECHNOLOGIES</strong><br>
+C-165 , SECTOR-10 , NOIDA - 201301<br>
+GST : 09AACFF0291J1ZF</p>`);
   const [supply, setSupply] = useState("");
   const [ic, setIC] = useState("");
   // Step 4 fields
@@ -156,14 +174,100 @@ function CreateQuotation() {
     return total;
   };
 
-  // PDF generation (simple Blob for demo)
-  const handleGeneratePDF = () => {
-    // For demo, just create a simple text PDF
-    const pdfContent = `Quotation Title: ${title}\nPrice: ${calculatePrice()}\nStatus: Pending`;
-    const blob = new Blob([pdfContent], { type: "application/pdf" });
-    const pdfUrl = URL.createObjectURL(blob);
-    // On success, redirect to quotations list
-    navigate("/quotations");
+  // Generate quotation and store data
+  const handleGeneratePDF = async () => {
+    try {
+      // Console log all form data
+      console.log("=== QUOTATION FORM DATA ===");
+      console.log("Step 1 - Basic Information:");
+      console.log("Title:", title);
+      console.log("Customer:", customer);
+      console.log("Subject:", subject);
+      console.log("Formal Message:", formalMessage);
+      
+      console.log("\nStep 2 - Products & Installation:");
+      console.log("Selected Products:", selectedProducts);
+      console.log("Product Rows:", productRows);
+      console.log("Machine Installation:", machineInstall);
+      console.log("Display Options:", displayOptions);
+      console.log("Description/Notes Options:", descNoteOptions);
+      console.log("Custom Notes:", customNotes);
+      
+      console.log("\nStep 3 - Additional Details:");
+      console.log("Notes:", notes);
+      console.log("Billing Details:", billing);
+      console.log("Supply:", supply);
+      console.log("I&C:", ic);
+      
+      console.log("\nStep 4 - Terms & Conditions:");
+      console.log("T&C:", tnc);
+      
+      console.log("\nStep 5 - Signature:");
+      console.log("Signature File:", signature);
+      console.log("Signature URL:", signatureUrl);
+      
+      console.log("\nCalculated Total Price:", calculatePrice());
+      console.log("=== END QUOTATION FORM DATA ===");
+
+      // Get authentication token
+      const token = tokenStorage.getToken();
+      if (!token) {
+        console.error("No authentication token found");
+        return;
+      }
+
+      // Prepare products data
+      const products = productRows.map(row => ({
+        product: row.product.value,
+        quantity: parseInt(row.qty) || 0,
+        unit: row.unit
+      }));
+
+      // Prepare machine installation data
+      const machineInstallation = {
+        quantity: parseInt(machineInstall.qty) || 0,
+        unit: machineInstall.unit,
+        price: parseFloat(machineInstall.price) || 0,
+        total: parseFloat(machineInstall.total) || 0
+      };
+
+      // Generate quotation reference number (you might want to implement a proper generator)
+      const quotationRefNumber = `QT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Prepare the request payload
+      const quotationData = {
+        quotationRefNumber,
+        title: title || "Quotation for Industrial Equipment",
+        client: customer?.value || "",
+        subject: subject || "Created by " + (user?.name || "User") + " Supply of Industrial Equipment",
+        formalMessage: formalMessage || "Dear Sir/Madam,\n\nWe are pleased to submit our quotation for the requested equipment...",
+        products,
+        machineInstallation,
+        notes: notes || "Additional notes here",
+        billingDetails: billing || "Payment terms: 50% advance, 50% before delivery",
+        supply: supply || "Delivery within 30 days",
+        installationAndCommissioning: ic || "Installation and commissioning included",
+        termsAndConditions: tnc || "Standard terms and conditions apply",
+        signatureImage: signature ? signature.name : "",
+        totalAmount: calculatePrice(),
+        relatedProducts: selectedProducts.map(p => p.value),
+        suggestedProducts: selectedProducts.map(p => p.value)
+      };
+
+      console.log("Sending quotation data to API:", quotationData);
+
+      // Make API call
+      const response = await apiClient.post('/api/quotations', quotationData);
+      const result = response.data;
+      console.log("Quotation created successfully:", result);
+      // On success, redirect to quotations list
+      navigate("/quotations");
+      
+    } catch (error) {
+      console.error("Error creating quotation:", error);
+      // You might want to show an error message to the user here
+      alert("Failed to create quotation. Please try again.");
+    }
   };
 
   // Main page layout
@@ -240,6 +344,7 @@ function CreateQuotation() {
               Formal Message
             </label>
             <CKEditor
+            
               editor={ClassicEditor}
               data={formalMessage}
               onChange={(_, editor) => setFormalMessage(editor.getData())}
@@ -616,7 +721,7 @@ function CreateQuotation() {
             onClick={handleGeneratePDF}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700"
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" /> Generate PDF
+            <CheckCircle2 className="w-4 h-4 mr-2" /> Generate Quotation
           </button>
         )}
       </div>
