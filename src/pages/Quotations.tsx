@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, MoreVertical, Edit2, Trash2 } from "lucide-react";
 import { useAuthContext } from "../features/auth/context/AuthContext";
 import { Quotation } from "../features/quotations/types";
 import { tokenStorage } from "../features/auth/utils";
@@ -14,6 +14,9 @@ function Quotations() {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(
+    null
+  );
 
   const fetchQuotations = async () => {
     setLoading(true);
@@ -25,13 +28,16 @@ function Quotations() {
         setLoading(false);
         return;
       }
+
       const params = new URLSearchParams({
         page: "1",
         limit: "10",
         sortOrder: "desc",
         userId: user.id,
       });
-      const response = await apiClient.get(`/api/quotations?${params.toString()}`);
+      const response = await apiClient.get(
+        `/api/quotations?${params.toString()}`
+      );
       const data = response.data;
       setQuotations(data.quotations || []);
     } catch (err: any) {
@@ -67,6 +73,49 @@ function Quotations() {
     }
   };
 
+  const handleActionClick = (quotationId: string) => {
+    setActionDropdownOpen(
+      actionDropdownOpen === quotationId ? null : quotationId
+    );
+  };
+
+  // Get status color function
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      case "under_development":
+        return "bg-blue-100 text-blue-800";
+      case "booked":
+        return "bg-green-100 text-green-800";
+      case "lost":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(".action-dropdown")) {
+        setActionDropdownOpen(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Empty state UI
   const EmptyState = () => (
     <div className="bg-white rounded-lg shadow p-12 text-center mt-8">
@@ -94,7 +143,7 @@ function Quotations() {
 
   // Main page layout
   return (
-    <div className="mx-auto">
+    <div className="mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">Quotations</h1>
         <button
@@ -112,55 +161,132 @@ function Quotations() {
       ) : quotations.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="bg-white rounded-lg shadow p-6 mt-4 overflow-x-auto">
+        <div className="bg-white rounded-lg shadow p-6 mt-4 overflow-x-auto flex-1 flex flex-col">
           <h2 className="text-lg font-semibold mb-4">Your Quotations</h2>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ref No</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Total Amount</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Created At</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {quotations.map((q) => (
-                <tr key={q._id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 whitespace-nowrap">{q.quotationRefNumber || '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{q.title || '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{q.client?.name || '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{q.subject || '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap capitalize">{q.status || '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{q.totalAmount != null ? `₹${q.totalAmount}` : '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">{q.createdAt ? new Date(q.createdAt).toLocaleDateString() : '-'}</td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <button
-                      className="text-indigo-600 hover:underline mr-4"
-                      onClick={() => handleEdit(q._id)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="text-red-600 hover:underline"
-                      onClick={() => handleDelete(q._id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
+          <div className="flex-1 overflow-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-2 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Title
+                  </th>
+                  <th className="px-2 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ref No
+                  </th>
+                  <th className="px-2 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Client
+                  </th>
+                  <th className="px-2 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Subject
+                  </th>
+                  <th className="px-2 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-2 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total Amount
+                  </th>
+                  <th className="px-2 sm:px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created At
+                  </th>
+                  <th className="px-2 sm:px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {quotations.map((q) => (
+                  <tr key={q._id} className="hover:bg-gray-50">
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap font-medium text-gray-900">
+                      {q.title || "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap text-sm text-gray-500">
+                      {q.quotationRefNumber || "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap text-sm text-gray-500">
+                      {q.client?.name || "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap text-sm text-gray-500">
+                      {q.subject || "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap">
+                      <span
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full ${getStatusColor(
+                          q.status
+                        )}`}
+                      >
+                        {q.status
+                          ? q.status.replace("_", " ").toUpperCase()
+                          : "-"}
+                      </span>
+                    </td>
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap text-sm text-gray-500">
+                      {q.totalAmount != null
+                        ? `₹${q.totalAmount.toLocaleString()}`
+                        : "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap text-sm text-gray-500">
+                      {q.createdAt
+                        ? new Date(q.createdAt).toLocaleDateString()
+                        : "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="relative action-dropdown">
+                        <button
+                          onClick={() => handleActionClick(q._id)}
+                          className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                        >
+                          <MoreVertical className="h-5 w-5" />
+                        </button>
+                        {actionDropdownOpen === q._id && (
+                          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                            <div
+                              className="py-1"
+                              role="menu"
+                              aria-orientation="vertical"
+                            >
+                              <button
+                                onClick={() => {
+                                  handleEdit(q._id);
+                                  setActionDropdownOpen(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                role="menuitem"
+                              >
+                                <Edit2 className="h-4 w-4 mr-2" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleDelete(q._id);
+                                  setActionDropdownOpen(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                role="menuitem"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {/* Delete Confirmation Modal */}
           {showDeleteModal && (
             <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
               <div className="bg-white rounded-lg shadow-lg p-8 max-w-sm w-full">
-                <h3 className="text-lg font-semibold mb-4">Delete Quotation?</h3>
-                <p className="mb-6">Are you sure you want to delete this quotation? This action cannot be undone.</p>
+                <h3 className="text-lg font-semibold mb-4">
+                  Delete Quotation?
+                </h3>
+                <p className="mb-6">
+                  Are you sure you want to delete this quotation? This action
+                  cannot be undone.
+                </p>
                 <div className="flex justify-end gap-4">
                   <button
                     className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"

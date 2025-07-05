@@ -742,40 +742,37 @@ function Dashboard() {
                         </span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
-                        {quotation.status === 'pending' && (
-                          <div className="relative">
-                            <button
-                              onClick={() => handleActionClick(quotation._id)}
-                              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                            >
-                              Actions
-                              <ChevronDown className="ml-1.5 h-4 w-4" />
-                            </button>
+                        <div className="relative">
+                          <button
+                            onClick={() => handleActionClick(quotation._id)}
+                            className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                          >
+                            <MoreVertical className="h-5 w-5" />
+                          </button>
 
-                            {actionDropdownOpen === quotation._id && (
-                              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                                <div className="py-1" role="menu" aria-orientation="vertical">
-                                  <button
-                                    onClick={() => handleActionSelect(quotation._id, 'approve')}
-                                    className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700"
-                                    role="menuitem"
-                                  >
-                                    <Check className="w-4 h-4 mr-2 text-green-500" />
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() => handleActionSelect(quotation._id, 'reject')}
-                                    className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700"
-                                    role="menuitem"
-                                  >
-                                    <X className="w-4 h-4 mr-2 text-red-500" />
-                                    Reject
-                                  </button>
-                                </div>
+                          {actionDropdownOpen === quotation._id && (
+                            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                              <div className="py-1" role="menu" aria-orientation="vertical">
+                                <button
+                                  onClick={() => handleActionSelect(quotation._id, 'approve')}
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700"
+                                  role="menuitem"
+                                >
+                                  <Check className="w-4 h-4 mr-2 text-green-500" />
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleActionSelect(quotation._id, 'reject')}
+                                  className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700"
+                                  role="menuitem"
+                                >
+                                  <X className="w-4 h-4 mr-2 text-red-500" />
+                                  Reject
+                                </button>
                               </div>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
