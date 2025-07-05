@@ -237,13 +237,9 @@ function Customers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
-        <button
-          onClick={handleAddCustomer}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <Plus className="w-5 h-5 mr-2" />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Customers</h1>
+        <button className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 w-full sm:w-auto mt-2 sm:mt-0">
           Add Customer
         </button>
       </div>
@@ -333,79 +329,45 @@ function Customers() {
         )
       ) : (
         <>
-          {/* Customer table */}
-          <div className="bg-white rounded-lg shadow">
-            <table className="w-full divide-y divide-gray-200">
+          {/* Responsive Table Wrapper */}
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48 cursor-pointer"
-                    onClick={() => handleSort('name')}
-                  >
-                    Name <SortIcon field="name" />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('email')}
-                  >
-                    Email <SortIcon field="email" />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort('position')}
-                  >
-                    Position <SortIcon field="position" />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Created By
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Address
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Phone Number
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Actions
-                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Name</th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Email</th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Position</th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Created By</th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Address</th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Phone Number</th>
+                  <th className="px-2 sm:px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {clients.map((client) => (
                   <tr key={client._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {client.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {client.email}
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(Array.isArray(client.email) ? client.email : String(client.email).split(/[\,\s]+/)).map((email, idx) => (
+                        <div key={idx}>{email}</div>
+                      ))}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {client.position}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {client.createdBy ? client.createdBy.name : 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: client.address }}>
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: client.address }}>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {client.phone}
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(Array.isArray(client.phone) ? client.phone : String(client.phone).split(/[\,\s]+/)).map((phone, idx) => (
+                        <div key={idx}>{phone}</div>
+                      ))}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="relative dropdown-container">
                         <button
                           onClick={() => handleActionClick(client._id)}

@@ -7,9 +7,8 @@ export const useUpdateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: Client) => {
-      // Assuming the update endpoint takes the full client object, including _id
-      return clientsApi.updateClient(payload);
+    mutationFn: async ({ clientId, payload }: { clientId: string; payload: any }) => {
+      return clientsApi.updateClient(clientId, payload);
     },
     onSuccess: (data) => {
       toast.success('Customer updated successfully!');

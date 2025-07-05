@@ -179,6 +179,11 @@ function Products() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
 
+  // Add state for new fields
+  const [quality, setQuality] = useState("");
+  const [specification, setSpecification] = useState("");
+  const [termsAndCondition, setTermsAndCondition] = useState("");
+
   // Refetch categories when modal opens
   useEffect(() => {
     if (isFormOpen) {
@@ -296,6 +301,9 @@ function Products() {
       categories: selectedCategories,
       notes: notes.trim(),
       description: description.trim(),
+      quality: quality.trim(),
+      specification: specification.trim(),
+      termsAndCondition: termsAndCondition.trim(),
     };
 
     try {
@@ -315,7 +323,11 @@ function Products() {
     setProductWarranty(product.warranty);
     setProductImageFilename(product.productImage || "");
     if (Array.isArray(product.categories)) {
-      setSelectedCategories(product.categories);
+      setSelectedCategories(
+        product.categories.map(cat =>
+          typeof cat === "object" && cat !== null ? (cat as any)._id : cat
+        )
+      );
     } else if (product.categories) {
       setSelectedCategories([product.categories]);
     } else {
@@ -323,6 +335,9 @@ function Products() {
     }
     setNotes(product.notes || "");
     setDescription((product as any).description || "");
+    setQuality(product.quality || "");
+    setSpecification(product.specification || "");
+    setTermsAndCondition(product.termsAndCondition || "");
     setIsFormOpen(true);
   };
 
@@ -365,6 +380,9 @@ function Products() {
       categories: selectedCategories,
       notes: notes.trim(),
       description: description.trim(),
+      quality: quality.trim(),
+      specification: specification.trim(),
+      termsAndCondition: termsAndCondition.trim(),
     };
 
     try {
@@ -392,6 +410,9 @@ function Products() {
     setSelectedCategories([]);
     setNotes("");
     setDescription("");
+    setQuality("");
+    setSpecification("");
+    setTermsAndCondition("");
     refetchCategories();
   };
 
@@ -470,36 +491,11 @@ function Products() {
   console.log("Products page: Rendering main content");
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
-        <div className="flex items-center space-x-3">
-          {/* Models  */}
-          <Link
-            to={"/models"}
-            className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-black bg-gray-50 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-          >
-            <FolderPlus className="w-5 h-5 mr-3" />
-            {"Models"}
-          </Link>
-          
-          {/* Categories  */}
-          <Link
-            to={"/categories"}
-            className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-black bg-gray-50 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
-          >
-            <FolderPlus className="w-5 h-5 mr-3" />
-            {"categories"}
-          </Link>
-
-          {/* Add Product Button */}
-          <button
-            onClick={() => setIsFormOpen(true)}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add Product
-          </button>
-        </div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Products</h1>
+        <button className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 w-full sm:w-auto mt-2 sm:mt-0">
+          Add Product
+        </button>
       </div>
 
       {/* Filters */}
@@ -629,123 +625,51 @@ function Products() {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div className="bg-white shadow rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm font-sans">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  <button
-                    onClick={() => handleSort("title")}
-                    className="group inline-flex items-center"
-                  >
-                    Title
-                    <ArrowUpDown className="ml-2 h-4 w-4 text-gray-400 group-hover:text-gray-500" />
-                    <SortIcon field="title" />
-                  </button>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Model
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Features
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Description
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Notes
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  <button
-                    onClick={() => handleSort("price")}
-                    className="group inline-flex items-center"
-                  >
-                    Price
-                    <IndianRupee className="ml-1 h-4 w-4 text-gray-400 group-hover:text-gray-500" />
-                    <SortIcon field="price" />
-                  </button>
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Warranty
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Image</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Title</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Notes</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Specification</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Category</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Warranty</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Price</th>
+                <th className="px-2 sm:px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {productsData.map((product) => (
                 <tr key={product._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {product.productImage && (
-                        <img
-                          src={`https://cms-be.yogendersingh.tech/public/products/${product.productImage}`}
-                          alt={product.title}
-                          className="h-10 w-10 rounded-full object-cover mr-3"
-                        />
-                      )}
-                      <div className="text-sm font-medium text-gray-900">
-                        {product.title}
-                      </div>
-                    </div>
+                  <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-center">
+                    {product.productImage ? (
+                      <img
+                        src={productImageFilename ? `https://cms-be.yogendersingh.tech/public/products/${productImageFilename}` : ""}
+                        alt={product.title}
+                        className="h-12 w-12 object-cover rounded"
+                      />
+                    ) : (
+                      <span className="text-gray-400">No Image</span>
+                    )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-2 sm:px-6 py-3 whitespace-nowrap font-medium text-gray-900">{product.title}</td>
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.description}>{product.description}</td>
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.notes}>{product.notes}</td>
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.specification}>{product.specification}</td>
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">
                     {typeof product.model === 'object' && product.model !== null ? (product.model as any).name : product.model}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex flex-wrap gap-1">
-                      {product.features.map((feature, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800"
-                        >
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">
+                    {Array.isArray(product.categories)
+                      ? product.categories.map(cat => typeof cat === 'object' && cat !== null ? (cat as any).name : cat).join(', ')
+                      : product.categories}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    <div
-                      className="w-48 truncate"
-                      title={(product as any).description}
-                    >
-                      {(product as any).description}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    <div className="w-48 truncate" title={product.notes}>
-                      {product.notes}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatPrice(product.price)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.warranty}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">{product.warranty}</td>
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">{formatPrice(product.price)}</td>
+                  <td className="px-2 sm:px-6 py-3 text-right text-sm font-medium">
                     <div className="relative">
                       <button
                         onClick={() => handleActionClick(product._id)}
@@ -963,6 +887,42 @@ function Products() {
                       placeholder="0.00"
                     />
                   </div>
+                </div>
+
+                {/* Quality */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Quality</label>
+                  <input
+                    type="text"
+                    value={quality}
+                    onChange={e => setQuality(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="e.g. Premium Grade"
+                  />
+                </div>
+
+                {/* Specification */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Specification</label>
+                  <textarea
+                    value={specification}
+                    onChange={e => setSpecification(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="e.g. Input: 230V AC, Output: 230V AC, Power: 10KVA"
+                    rows={2}
+                  />
+                </div>
+
+                {/* Terms and Condition */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Terms and Condition</label>
+                  <textarea
+                    value={termsAndCondition}
+                    onChange={e => setTermsAndCondition(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    placeholder="e.g. Standard warranty terms apply. Installation not included."
+                    rows={2}
+                  />
                 </div>
               </div>
             </div>

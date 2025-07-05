@@ -7,10 +7,14 @@ export type CreatedBy = {
 export type Client = {
   _id: string;
   name: string;
-  email: string;
+  email: string[];
   position: string;
   address: string;
-  phone: string;
+  place?: string;
+  city?: string;
+  state?: string;
+  PIN?: string;
+  phone: string[];
   companyName?: string;
   createdBy?: CreatedBy;
   createdAt: string;
@@ -33,11 +37,15 @@ export type ClientsResponse = {
 
 export type CreateClientPayload = {
   name: string;
-  email: string;
+  email: string[];
   position: string;
   address: string;
-  phone: string;
-  companyName: string;
+  place?: string;
+  city?: string;
+  state?: string;
+  PIN?: string;
+  phone: string[];
+  companyName?: string;
 };
 
 export type CreateClientResponse = {

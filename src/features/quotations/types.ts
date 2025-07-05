@@ -74,7 +74,8 @@ export type QuotationsFilters = {
   userId?: string;
   search?: string;
   customer?: string;
-  month?: string;
+  fromMonth?: string;
+  toMonth?: string;
   status?: QuotationStatus;
   converted?: string;
 };

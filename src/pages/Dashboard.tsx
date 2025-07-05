@@ -3,7 +3,7 @@ import { useAuth } from '../features/auth/hooks/useAuth';
 import { useAuthContext } from '../features/auth/context/AuthContext';
 import { useUsers } from '../features/users/hooks/useUsers';
 import { useQuotations, useUpdateQuotationStatus, Quotation, QuotationStatus, AdminStatus, DashboardStats } from '../features/quotations';
-import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, MoreVertical, Check, X, Calendar } from 'lucide-react';
+import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, MoreVertical, Check, X } from 'lucide-react';
 // import { AuthDebug } from '../components/AuthDebug';
 
 // Remove the old type definitions since we're importing them from quotations
@@ -37,7 +37,14 @@ function Dashboard() {
   const [userSearchTerm, setUserSearchTerm] = useState('');
   const [debouncedUserSearch, setDebouncedUserSearch] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [fromMonth, setFromMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [toMonth, setToMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [selectedQuotationStatus, setSelectedQuotationStatus] = useState<QuotationStatus | ''>('');
   const [selectedAdminStatus, setSelectedAdminStatus] = useState<string>('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -45,13 +52,9 @@ function Dashboard() {
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [calendarView, setCalendarView] = useState<'months' | 'years'>('months');
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   
   // Ref for the user dropdown
   const userDropdownRef = useRef<HTMLDivElement>(null);
-  const datePickerRef = useRef<HTMLDivElement>(null);
 
   // Check if user is admin - more robust check
   const isAdmin = user?.role?.toLowerCase()?.trim() === 'admin';
@@ -94,19 +97,16 @@ function Dashboard() {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setIsUserDropdownOpen(false);
       }
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-        setIsDatePickerOpen(false);
-      }
     };
 
-    if (isUserDropdownOpen || isDatePickerOpen) {
+    if (isUserDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isUserDropdownOpen, isDatePickerOpen]);
+  }, [isUserDropdownOpen]);
 
   // Fetch users for the dropdown - ALWAYS call this hook, even if we don't use the data
   const { data: usersData, isLoading: usersLoading, error: usersError } = useUsers({
@@ -134,7 +134,8 @@ function Dashboard() {
     sortOrder: 'desc',
     userId: selectedUser,
     search: searchTerm,
-    month: selectedMonth,
+    fromMonth: fromMonth || undefined,
+    toMonth: toMonth || undefined,
     status: selectedQuotationStatus || undefined,
     converted: selectedAdminStatus || undefined,
   });
@@ -193,16 +194,7 @@ function Dashboard() {
     };
   }, [statsQuotationsData, statsQuotationsLoading, statsQuotations.length]); // More stable dependencies
 
-  // Get available months from UNFILTERED data (for filters)
-  const availableMonths = useMemo(() => {
-    const months = new Set(
-      statsQuotations.map(quotation => {
-        const date = new Date(quotation.createdAt);
-        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      })
-    );
-    return Array.from(months).sort().reverse();
-  }, [statsQuotations]);
+
 
   // Handle quotation status update
   const handleActionSelect = useCallback((quotationId: string, action: 'approve' | 'reject') => {
@@ -221,7 +213,8 @@ function Dashboard() {
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm('');
-    setSelectedMonth('');
+    setFromMonth('');
+    setToMonth('');
     setSelectedQuotationStatus('');
     setSelectedAdminStatus('');
     setCurrentPage(1);
@@ -231,42 +224,6 @@ function Dashboard() {
   // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-  };
-
-  // Handle month selection from date picker
-  const handleMonthSelect = (year: number, month: number) => {
-    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-    setSelectedMonth(monthKey);
-    setCurrentPage(1);
-    setIsDatePickerOpen(false);
-  };
-
-  // Generate years for the year picker
-  const generateYears = () => {
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let year = currentYear; year >= currentYear - 10; year--) {
-      years.push(year);
-    }
-    return years;
-  };
-
-  // Generate months for the month picker
-  const generateMonths = () => {
-    return [
-      { value: 1, name: 'January' },
-      { value: 2, name: 'February' },
-      { value: 3, name: 'March' },
-      { value: 4, name: 'April' },
-      { value: 5, name: 'May' },
-      { value: 6, name: 'June' },
-      { value: 7, name: 'July' },
-      { value: 8, name: 'August' },
-      { value: 9, name: 'September' },
-      { value: 10, name: 'October' },
-      { value: 11, name: 'November' },
-      { value: 12, name: 'December' },
-    ];
   };
 
   // NOW we can have conditional returns after all hooks are called
@@ -494,7 +451,7 @@ function Dashboard() {
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-4">
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
@@ -603,124 +560,40 @@ function Dashboard() {
                   </div>
                 </div> */}
 
-                {/* Month */}
+                {/* Month Range */}
                 <div>
-                  <label htmlFor="month" className="block text-sm font-medium text-gray-700 mb-1">
-                    Month
+                  <label htmlFor="from-month" className="block text-sm font-medium text-gray-700 mb-1">
+                    From Month
                   </label>
-                  <div className="relative" ref={datePickerRef}>
-                    <button
-                      onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-                      disabled={quotationsLoading}
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between px-3 py-2 border"
-                    >
-                      {selectedMonth ? (
-                        <span className="text-sm text-gray-700">
-                          {new Date(selectedMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-gray-400">Select a month</span>
-                      )}
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                    </button>
-                    {isDatePickerOpen && (
-                      <div className="absolute z-10 mt-1 w-80 bg-white shadow-lg rounded-md border border-gray-200 focus:outline-none sm:text-sm">
-                        {/* Calendar Header */}
-                        <div className="px-4 py-3 border-b border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <button
-                              onClick={() => setCalendarView(calendarView === 'months' ? 'years' : 'months')}
-                              className="text-sm font-medium text-gray-700 hover:text-indigo-600"
-                            >
-                              {calendarView === 'months' ? selectedYear : 'Select Year'}
-                            </button>
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => setSelectedYear(selectedYear - 1)}
-                                className="p-1 hover:bg-gray-100 rounded"
-                              >
-                                <ChevronDown className="w-4 h-4 transform rotate-90" />
-                              </button>
-                              <button
-                                onClick={() => setSelectedYear(selectedYear + 1)}
-                                className="p-1 hover:bg-gray-100 rounded"
-                              >
-                                <ChevronDown className="w-4 h-4 transform -rotate-90" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                  <input
+                    type="month"
+                    id="from-month"
+                    value={fromMonth}
+                    onChange={(e) => {
+                      setFromMonth(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={quotationsLoading}
+                    className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
+                </div>
 
-                        {/* Calendar Body */}
-                        <div className="p-4">
-                          {calendarView === 'years' ? (
-                            // Year Picker
-                            <div className="grid grid-cols-3 gap-2">
-                              {generateYears().map((year) => (
-                                <button
-                                  key={year}
-                                  onClick={() => {
-                                    setSelectedYear(year);
-                                    setCalendarView('months');
-                                  }}
-                                  className={`p-2 text-sm rounded hover:bg-gray-100 ${
-                                    year === selectedYear ? 'bg-indigo-100 text-indigo-700' : 'text-gray-700'
-                                  }`}
-                                >
-                                  {year}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            // Month Picker
-                            <div className="grid grid-cols-3 gap-2">
-                              {generateMonths().map((month) => {
-                                const monthKey = `${selectedYear}-${String(month.value).padStart(2, '0')}`;
-                                const isSelected = selectedMonth === monthKey;
-                                const isAvailable = availableMonths.includes(monthKey);
-                                return (
-                                  <button
-                                    key={month.value}
-                                    onClick={() => {
-                                      if (isAvailable) {
-                                        handleMonthSelect(selectedYear, month.value);
-                                      }
-                                    }}
-                                    disabled={!isAvailable}
-                                    className={`p-2 text-sm rounded transition-colors ${
-                                      isSelected
-                                        ? 'bg-indigo-600 text-white'
-                                        : isAvailable
-                                        ? 'hover:bg-gray-100 text-gray-700'
-                                        : 'text-gray-400 cursor-not-allowed'
-                                    }`}
-                                  >
-                                    {month.name}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Calendar Footer */}
-                        {selectedMonth && (
-                          <div className="px-4 py-2 border-t border-gray-200">
-                            <button
-                              onClick={() => {
-                                setSelectedMonth('');
-                                setCurrentPage(1);
-                                setIsDatePickerOpen(false);
-                              }}
-                              className="w-full text-sm text-red-600 hover:text-red-800 py-1"
-                            >
-                              Clear Selection
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                <div>
+                  <label htmlFor="to-month" className="block text-sm font-medium text-gray-700 mb-1">
+                    To Month
+                  </label>
+                  <input
+                    type="month"
+                    id="to-month"
+                    value={toMonth}
+                    onChange={(e) => {
+                      setToMonth(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={quotationsLoading}
+                    min={fromMonth}
+                    className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  />
                 </div>
 
                 {/* Quotation Status */}
@@ -768,7 +641,7 @@ function Dashboard() {
                 </div>
               </div>
 
-              {(selectedMonth || selectedQuotationStatus || selectedAdminStatus || searchTerm) && (
+              {(fromMonth || toMonth || selectedQuotationStatus || selectedAdminStatus || searchTerm) && (
                 <div className="flex items-end">
                   <button
                     onClick={clearFilters}
@@ -782,14 +655,14 @@ function Dashboard() {
             </div>
             
             {/* Filter indicator */}
-            {(selectedMonth || selectedQuotationStatus || selectedAdminStatus || searchTerm) && (
+            {(fromMonth || toMonth || selectedQuotationStatus || selectedAdminStatus || searchTerm) && (
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                 <div className="flex items-center">
                   <Filter className="w-4 h-4 text-blue-600 mr-2" />
                   <span className="text-sm text-blue-800">
                     Filters applied: {[
                       searchTerm && 'Search',
-                      selectedMonth && 'Month',
+                      (fromMonth || toMonth) && 'Month Range',
                       selectedQuotationStatus && 'Status',
                       selectedAdminStatus && 'Conversion Status'
                     ].filter(Boolean).join(', ')}

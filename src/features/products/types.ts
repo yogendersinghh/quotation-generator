@@ -11,6 +11,10 @@ export interface Product {
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  description?: string;
+  quality?: string;
+  specification?: string;
+  termsAndCondition?: string;
 }
 
 export interface Pagination {
@@ -35,6 +39,10 @@ export interface CreateProductRequest {
   warranty: string;
   categories: string[];
   notes?: string;
+  description?: string;
+  quality?: string;
+  specification?: string;
+  termsAndCondition?: string;
 }
 
 export interface CreateProductResponse {

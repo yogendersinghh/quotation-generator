@@ -51,11 +51,11 @@ export const clientsApi = {
     }
   },
 
-  updateClient: async (payload: Client): Promise<CreateClientResponse> => {
-    console.log('Making PUT request to update client:', `${CLIENTS_ENDPOINT}/${payload._id}`);
+  updateClient: async (clientId: string, payload: Partial<CreateClientPayload>): Promise<CreateClientResponse> => {
+    console.log('Making PUT request to update client:', `${CLIENTS_ENDPOINT}/${clientId}`);
     console.log('Client update payload:', payload);
     try {
-      const { data } = await apiClient.put<CreateClientResponse>(`${CLIENTS_ENDPOINT}/${payload._id}`, payload);
+      const { data } = await apiClient.put<CreateClientResponse>(`${CLIENTS_ENDPOINT}/${clientId}`, payload);
       console.log('Update client response:', data);
       return data;
     } catch (error: any) {
