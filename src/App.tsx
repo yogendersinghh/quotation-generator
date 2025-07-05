@@ -12,6 +12,7 @@ import Customers from './pages/Customers';
 import Categories from './pages/Categories';
 import Models from './pages/Models';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import CreateQuotation from './pages/CreateQuotation';
 
 function App() {
   return (
@@ -86,6 +87,7 @@ function App() {
             <Route path="customers" element={<Customers />} />
             <Route path="categories" element={<Categories />} />
             <Route path="models" element={<Models />} />
+            <Route path="quotations/create" element={<CreateQuotation />} />
           </Route>
         </Routes>
       </AuthProvider>
