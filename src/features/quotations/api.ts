@@ -3,6 +3,20 @@ import { QuotationsResponse, QuotationsFilters, Quotation, DashboardStats } from
 
 const QUOTATIONS_ENDPOINT = '/api/quotations';
 
+// Helper function to map frontend status values to backend status values
+const mapStatusToBackend = (status: string): string => {
+  switch (status) {
+    case 'approved':
+      return 'accepted';
+    case 'rejected':
+      return 'pending';
+    case 'pending':
+      return 'draft';
+    default:
+      return status;
+  }
+};
+
 export const quotationsApi = {
   getQuotations: async (filters?: QuotationsFilters): Promise<QuotationsResponse> => {
     const url = new URL(QUOTATIONS_ENDPOINT, apiClient.defaults.baseURL);
@@ -10,7 +24,12 @@ export const quotationsApi = {
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '' && value !== null) {
-          url.searchParams.append(key, String(value));
+          // Map status values for backend compatibility
+          if (key === 'status' && typeof value === 'string') {
+            url.searchParams.append(key, mapStatusToBackend(value));
+          } else {
+            url.searchParams.append(key, String(value));
+          }
         }
       });
     }
@@ -30,11 +49,14 @@ export const quotationsApi = {
     }
   },
 
-  updateQuotationStatus: async (quotationId: string, action: 'approve' | 'reject'): Promise<void> => {
+  updateQuotationStatus: async (quotationId: string, status: 'pending' | 'approved' | 'rejected'): Promise<void> => {
     console.log('Making PATCH request to update quotation status:', `/api/quotations/admin/${quotationId}/status`);
-    console.log('Status update:', { action });
+    
+    const payloadStatus = mapStatusToBackend(status);
+    
+    console.log('Status update:', { status, payloadStatus });
     try {
-      await apiClient.patch(`/api/quotations/admin/${quotationId}/status`, { action });
+      await apiClient.patch(`/api/quotations/admin/${quotationId}/status`, { status: payloadStatus });
       console.log('Quotation status updated successfully:', quotationId);
     } catch (error: any) {
       console.error('Update quotation status API error:', {

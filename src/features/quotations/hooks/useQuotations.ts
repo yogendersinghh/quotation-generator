@@ -28,14 +28,14 @@ export const useUpdateQuotationStatus = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ quotationId, action }: { quotationId: string; action: 'approve' | 'reject' }) =>
-      quotationsApi.updateQuotationStatus(quotationId, action),
+    mutationFn: ({ quotationId, status }: { quotationId: string; status: 'pending' | 'approved' | 'rejected' }) =>
+      quotationsApi.updateQuotationStatus(quotationId, status),
     onSuccess: (_, variables) => {
       // Invalidate and refetch quotations data
       queryClient.invalidateQueries({ queryKey: ['quotations'] });
-      // Also invalidate dashboard stats since approval/rejection affects stats
+      // Also invalidate dashboard stats since status changes affect stats
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
-      console.log(`Quotation ${variables.action}d successfully`);
+      console.log(`Quotation status updated to ${variables.status} successfully`);
     },
     onError: (error) => {
       console.error('Failed to update quotation status:', error);

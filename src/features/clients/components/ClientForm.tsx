@@ -160,7 +160,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
   const isPending = isCreating || isUpdating;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto !mt-[0px]">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl mx-4 my-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">{initialData ? 'Edit Customer' : 'Add New Customer'}</h2>
@@ -181,7 +181,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                   type="text"
                   id="name"
                   {...register('name')}
-                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                   placeholder="John Doe"
                 />
               </div>
@@ -198,7 +198,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                   type="text"
                   id="position"
                   {...register('position')}
-                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                   placeholder="Manager"
                 />
               </div>
@@ -217,7 +217,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                 type="text"
                 id="companyName"
                 {...register('companyName')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="ABC Company"
               />
             </div>
@@ -236,7 +236,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                     type="email"
                     value={email}
                     onChange={(e) => updateEmail(index, e.target.value)}
-                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                     placeholder="john@company.com"
                   />
                 </div>
@@ -274,7 +274,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                     type="text"
                     value={phone}
                     onChange={(e) => updatePhone(index, e.target.value)}
-                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                     placeholder="+919876543210"
                   />
                 </div>
@@ -310,7 +310,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                 type="text"
                 id="address"
                 {...register('address')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="123 Main Street"
               />
             </div>
@@ -324,7 +324,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                 type="text"
                 id="place"
                 {...register('place')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="Downtown"
               />
             </div>
@@ -335,7 +335,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                 type="text"
                 id="city"
                 {...register('city')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="Mumbai"
               />
             </div>
@@ -346,7 +346,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                 type="text"
                 id="state"
                 {...register('state')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="Maharashtra"
               />
             </div>
@@ -357,7 +357,7 @@ export const ClientForm = ({ onClose, initialData }: ClientFormProps) => {
                 type="text"
                 id="PIN"
                 {...register('PIN')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="400001"
               />
             </div>

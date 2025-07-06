@@ -108,7 +108,7 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
                 type="text"
                 id="name"
                 {...register('name')}
-                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="John Doe"
               />
             </div>
@@ -125,7 +125,7 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
                 type="email"
                 id="email"
                 {...register('email')}
-                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
+                className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="you@example.com"
               />
             </div>

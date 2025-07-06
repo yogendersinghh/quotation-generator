@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useComponentInitialization } from "../hooks/useComponentInitialization";
+import SearchBar from "../components/SearchBar";
 import {
   Plus,
   Search,
@@ -195,16 +196,12 @@ function Categories() {
 
       {/* Search */}
       <div className="bg-white p-6 rounded-lg shadow">
-        <div className="relative">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search categories by name or description..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          />
-          <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-        </div>
+        <SearchBar
+          placeholder="Search categories by name or description..."
+          onSearch={setSearchTerm}
+          debounceMs={500}
+          initialValue={searchTerm}
+        />
       </div>
 
       {/* Categories List */}
@@ -310,7 +307,7 @@ function Categories() {
 
       {/* Add/Edit Category Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50 !mt-0">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
@@ -395,7 +392,7 @@ function Categories() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && categoryToDelete && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50 !mt-0">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Delete Category</h3>

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAuthStore } from '../store/auth';
+import SearchBar from '../components/SearchBar';
 import { 
   Plus, 
-  Search, 
+  Search,
   X, 
   User,
   Mail,
@@ -334,32 +335,16 @@ function Users() {
 
       {/* Search bar - ALWAYS VISIBLE */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            key="search-input"
-            type="text"
-            placeholder={data.users.length === 0 && !debouncedSearchQuery
-              ? "Add users to enable search"
-              : "Search users by name..."
-            }
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            autoComplete="off"
-            spellCheck="false"
-            disabled={data.users.length === 0 && !debouncedSearchQuery}
-          />
-          {searchQuery && (
-            <button
-              onClick={handleClearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              type="button"
-            >
-              <X size={20} />
-            </button>
-          )}
-        </div>
+        <SearchBar
+          placeholder={data.users.length === 0 && !debouncedSearchQuery
+            ? "Add users to enable search"
+            : "Search users by name..."
+          }
+          onSearch={setSearchQuery}
+          debounceMs={500}
+          disabled={data.users.length === 0 && !debouncedSearchQuery}
+          initialValue={searchQuery}
+        />
         {debouncedSearchQuery && data.users.length > 0 && ( /* Only show results summary if there are actual results */
           <div className="mt-2 text-sm text-gray-600">
             Showing results for: <span className="font-medium">"{debouncedSearchQuery}"</span>

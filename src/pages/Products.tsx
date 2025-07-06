@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useComponentInitialization } from "../hooks/useComponentInitialization";
+import SearchBar from "../components/SearchBar";
 import {
   Plus,
-  Search,
   X,
   Package,
   Edit2,
@@ -545,28 +545,16 @@ function Products() {
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
           <div className="relative col-span-full md:col-span-1">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+            <SearchBar
               placeholder={
                 productsData.length === 0 && !hasActiveFilters
                   ? "Add products to enable search"
                   : "Search by title..."
               }
+              onSearch={setSearchTerm}
+              debounceMs={500}
               disabled={productsData.length === 0 && !hasActiveFilters}
-              className={`w-full pl-10 pr-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                productsData.length === 0 && !hasActiveFilters
-                  ? "bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed"
-                  : "border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-              }`}
-            />
-            <Search
-              className={`w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 ${
-                productsData.length === 0 && !hasActiveFilters
-                  ? "text-gray-400"
-                  : "text-gray-500"
-              }`}
+              initialValue={searchTerm}
             />
           </div>
 
@@ -763,7 +751,7 @@ function Products() {
 
       {/* Add Product Modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50 !mt-[0px]">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
@@ -788,7 +776,7 @@ function Products() {
                     type="text"
                     value={productTitle}
                     onChange={(e) => setProductTitle(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
                     placeholder="Enter product title"
                   />
                 </div>
@@ -838,7 +826,7 @@ function Products() {
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
                     placeholder="Enter description (optional)"
                     rows={3}
                   />
@@ -852,7 +840,7 @@ function Products() {
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
                     placeholder="Enter notes (optional)"
                     rows={3}
                   />
@@ -908,7 +896,7 @@ function Products() {
                           e.target.value.split(",").map((f) => f.trim())
                         )
                       }
-                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
                       placeholder="Enter features, e.g., Feature1, Feature2"
                     />
                   </div>
@@ -923,7 +911,7 @@ function Products() {
                     type="text"
                     value={productWarranty}
                     onChange={(e) => setProductWarranty(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
                     placeholder="e.g., 1 year, 6 months"
                   />
                 </div>
@@ -954,7 +942,7 @@ function Products() {
                     type="text"
                     value={quality}
                     onChange={e => setQuality(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
                     placeholder="e.g. Premium Grade"
                   />
                 </div>
@@ -965,7 +953,7 @@ function Products() {
                   <textarea
                     value={specification}
                     onChange={e => setSpecification(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
                     placeholder="e.g. Input: 230V AC, Output: 230V AC, Power: 10KVA"
                     rows={2}
                   />
@@ -977,7 +965,7 @@ function Products() {
                   <textarea
                     value={termsAndCondition}
                     onChange={e => setTermsAndCondition(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
                     placeholder="e.g. Standard warranty terms apply. Installation not included."
                     rows={2}
                   />
@@ -1022,7 +1010,7 @@ function Products() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && productToDelete && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50 !mt-[0px]">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">
@@ -1059,7 +1047,7 @@ function Products() {
 
       {/* Add Option Modal (Admin Only) */}
       {isOptionFormOpen && selectedOptionType && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50 !mt-[0px]">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">
@@ -1089,7 +1077,7 @@ function Products() {
                   type="text"
                   value={newOptionName}
                   onChange={(e) => setNewOptionName(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
                   placeholder={`Enter ${selectedOptionType} name`}
                 />
               </div>

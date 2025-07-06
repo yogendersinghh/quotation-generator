@@ -96,17 +96,17 @@ function Login() {
                 {...register('password')}
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                className={`appearance-none rounded-none relative block w-full px-3 py-2 border ${
+                className={`appearance-none rounded-none relative block w-full px-3 py-2 pr-10 border ${
                   errors.password ? 'border-red-300' : 'border-gray-300'
                 } placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
                 placeholder="Password"
                 aria-invalid={errors.password ? 'true' : 'false'}
               />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <div className="absolute top-[9px] right-0 pr-3 flex items-center pointer-events-none z-50">
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-gray-400 hover:text-gray-500"
+                  className="text-gray-400 hover:text-gray-500 pointer-events-auto z-20"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
@@ -116,12 +116,12 @@ function Login() {
                   )}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-600" role="alert">
-                  {errors.password.message}
-                </p>
-              )}
             </div>
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-600" role="alert">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
           <div>

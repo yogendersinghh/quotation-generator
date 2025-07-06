@@ -4,32 +4,9 @@ import { useAuthContext } from '../features/auth/context/AuthContext';
 import { useUsers } from '../features/users/hooks/useUsers';
 import { useQuotations, useUpdateQuotationStatus, useDashboardStats, Quotation, QuotationStatus, AdminStatus, DashboardStats } from '../features/quotations';
 import { useQueryClient } from '@tanstack/react-query';
+import SearchBar from '../components/SearchBar';
 import { ChevronDown, Search, Filter, User, DollarSign, Users, Clock, CheckCircle, XCircle, AlertCircle, UserPlus, MoreVertical, Check, X } from 'lucide-react';
 // import { AuthDebug } from '../components/AuthDebug';
-
-// Remove the old type definitions since we're importing them from quotations
-// type QuotationStatus = 'pending' | 'approved' | 'rejected' | 'under_development' | 'booked' | 'lost';
-// type AdminStatus = 'pending' | 'approved' | 'rejected';
-
-// type Quotation = {
-//   id: string;
-//   name: string;
-//   customerName: string;
-//   price: number;
-//   createdAt: Date;
-//   quotationStatus: QuotationStatus;
-//   adminStatus: AdminStatus;
-//   createdBy: string;
-// };
-
-// type DashboardStats = {
-//   totalQuotations: number;
-//   pendingApprovals: number;
-//   totalClients: number;
-//   underDevelopment: number;
-//   booked: number;
-//   lost: number;
-// };
 
 function Dashboard() {
   const { user } = useAuth();
@@ -220,16 +197,16 @@ function Dashboard() {
 
 
   // Handle quotation status update
-  const handleActionSelect = useCallback((quotationId: string, action: 'approve' | 'reject') => {
-    console.log('Updating quotation status:', { quotationId, action });
+  const handleActionSelect = useCallback((quotationId: string, status: 'pending' | 'approved' | 'rejected') => {
+    console.log('Updating quotation status:', { quotationId, status });
     updateQuotationStatus.mutate({
       quotationId,
-      action
+      status
     }, {
       onSuccess: () => {
         setNotification({
           type: 'success',
-          message: `Quotation ${action}d successfully!`
+          message: `Quotation status updated to ${status} successfully!`
         });
         // Auto-hide notification after 3 seconds
         setTimeout(() => setNotification(null), 3000);
@@ -237,7 +214,7 @@ function Dashboard() {
       onError: () => {
         setNotification({
           type: 'error',
-          message: `Failed to ${action} quotation. Please try again.`
+          message: `Failed to update quotation status to ${status}. Please try again.`
         });
         // Auto-hide notification after 5 seconds
         setTimeout(() => setNotification(null), 5000);
@@ -469,16 +446,12 @@ function Dashboard() {
         {/* Search Bar */}
         <div className="relative">
           {selectedUser ? (
-            <>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search quotations..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            </>
+            <SearchBar
+              placeholder="Search quotations..."
+              onSearch={setSearchTerm}
+              debounceMs={500}
+              initialValue={searchTerm}
+            />
           ) : (
             <div className="relative">
               <input
@@ -665,7 +638,7 @@ function Dashboard() {
                 {/* Quotation Status */}
                 <div>
                   <label htmlFor="quotation-status" className="block text-sm font-medium text-gray-700 mb-1">
-                    Quotation Status
+                    Admin Status
                   </label>
                   <select
                     id="quotation-status"
@@ -687,7 +660,7 @@ function Dashboard() {
                 {/* Admin Status */}
                 <div>
                   <label htmlFor="admin-status" className="block text-sm font-medium text-gray-700 mb-1">
-                    Admin Status
+                    Quotation Status
                   </label>
                   <select
                     id="admin-status"
@@ -820,7 +793,7 @@ function Dashboard() {
                             <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                               <div className="py-1" role="menu" aria-orientation="vertical">
                                 <button
-                                  onClick={() => handleActionSelect(quotation._id, 'approve')}
+                                  onClick={() => handleActionSelect(quotation._id, 'approved')}
                                   disabled={updateQuotationStatus.isPending}
                                   className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                   role="menuitem"
@@ -833,7 +806,7 @@ function Dashboard() {
                                   {updateQuotationStatus.isPending ? 'Approving...' : 'Approve'}
                                 </button>
                                 <button
-                                  onClick={() => handleActionSelect(quotation._id, 'reject')}
+                                  onClick={() => handleActionSelect(quotation._id, 'rejected')}
                                   disabled={updateQuotationStatus.isPending}
                                   className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                   role="menuitem"

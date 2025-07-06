@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useComponentInitialization } from "../hooks/useComponentInitialization";
+import SearchBar from "../components/SearchBar";
 import {
   Plus,
   Search,
@@ -163,16 +164,12 @@ function Models() {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow">
-        <div className="relative">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search models..."
-            className="w-full pl-10 pr-4 py-2 border rounded-md"
-          />
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-        </div>
+        <SearchBar
+          placeholder="Search models..."
+          onSearch={setSearchTerm}
+          debounceMs={500}
+          initialValue={searchTerm}
+        />
       </div>
 
       {filteredModels.length === 0 ? (
@@ -241,11 +238,11 @@ function Models() {
               <div className="space-y-4 py-6">
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" value={modelName} onChange={(e) => setModelName(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm"/>
+                    <input type="text" value={modelName} onChange={(e) => setModelName(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-3"/>
                  </div>
                  <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea value={modelDescription} onChange={(e) => setModelDescription(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm"/>
+                    <textarea value={modelDescription} onChange={(e) => setModelDescription(e.target.value)} className="w-full border-gray-300 rounded-md shadow-sm p-3"/>
                  </div>
                  <div>
                    <label htmlFor="specifications" className="block text-sm font-medium text-gray-700">Specifications</label>
