@@ -533,6 +533,7 @@ GST : 09AACFF0291J1ZF</p>`);
                         />
                       )}
                     </td>
+
                     <td className="px-2 py-1 pb-8 pt-8">
                       <Select
                         value={{
@@ -565,24 +566,26 @@ GST : 09AACFF0291J1ZF</p>`);
                         value={
                           (descNoteOptions[row.product.value] ||
                             "description") === "notes"
-                            ? customNotes[row.product.value] ??
+                            ? customNotes[`${row.product.value}_notes`] ??
                               row.product.notes ??
                               ""
-                            : row.product.description ?? ""
+                            : customNotes[`${row.product.value}_description`] ??
+                              row.product.description ??
+                              ""
                         }
                         onChange={(e) =>
                           setCustomNotes((notes) => ({
                             ...notes,
-                            [row.product.value]: e.target.value,
+                            [(descNoteOptions[row.product.value] ||
+                              "description") === "notes"
+                              ? `${row.product.value}_notes`
+                              : `${row.product.value}_description`]: e.target.value,
                           }))
                         }
                         className="w-full border rounded px-2 py-1 mt-2"
-                        disabled={
-                          (descNoteOptions[row.product.value] ||
-                            "description") !== "notes"
-                        }
                       />
                     </td>
+                    
                     <td className="px-2 py-1 pb-8 pt-8">
                       <div className="h-[38px]">
                         <p>Product Qty</p>
