@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { useAuth } from "../features/auth/hooks/useAuth";
 import { useAuthContext } from "../features/auth/context/AuthContext";
 import { Quotation } from "../features/quotations/types";
-import { tokenStorage } from "../features/auth/utils";
 import { apiClient } from "../lib/axios";
 
 function Quotations() {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const { user } = useAuth();
+  const { isInitialized } = useAuthContext();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,22 +19,33 @@ function Quotations() {
     null
   );
 
+  // Check if user is admin or manager (allowed roles for quotations)
+  const isAuthorized = user?.role === 'admin' || user?.role === 'manager';
+
+  // Redirect if not authenticated or not authorized
+  useEffect(() => {
+    if (!isInitialized) return; // Wait for auth to initialize
+    
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (!isAuthorized) {
+      navigate('/dashboard');
+      return;
+    }
+  }, [isInitialized, user, isAuthorized, navigate]);
+
   const fetchQuotations = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = tokenStorage.getToken();
-      if (!token || !user) {
-        setError("Not authenticated");
-        setLoading(false);
-        return;
-      }
-
       const params = new URLSearchParams({
         page: "1",
         limit: "10",
         sortOrder: "desc",
-        userId: user.id,
+        userId: user?.id || "",
       });
       const response = await apiClient.get(
         `/api/quotations?${params.toString()}`
@@ -48,9 +60,10 @@ function Quotations() {
   };
 
   useEffect(() => {
-    fetchQuotations();
-    // eslint-disable-next-line
-  }, []);
+    if (isInitialized && user && isAuthorized) {
+      fetchQuotations();
+    }
+  }, [isInitialized, user, isAuthorized]);
 
   const handleEdit = (id: string) => {
     navigate(`/quotations/edit/${id}`);
@@ -115,6 +128,35 @@ function Quotations() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Don't render anything until auth is initialized
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initializing authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state if user is not available yet
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading user data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything while redirecting if not authorized
+  if (!isAuthorized) {
+    return null;
+  }
 
   // Empty state UI
   const EmptyState = () => (
@@ -257,7 +299,7 @@ function Quotations() {
                           <MoreVertical className="h-5 w-5" />
                         </button>
                         {actionDropdownOpen === q._id && (
-                          <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                          <div className="fixed right-[24px] mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                             <div
                               className="py-1"
                               role="menu"

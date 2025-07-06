@@ -359,7 +359,7 @@ function Customers() {
                         </button>
                         
                         {actionDropdownOpen === client._id && (
-                          <div className="absolute right-0 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 ring-1 ring-black ring-opacity-5">
+                          <div className="fixed right-[24px] w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 ring-1 ring-black ring-opacity-5">
                             <div className="py-1">
                               <button
                                 onClick={() => handleEditCustomer(client)}

@@ -701,7 +701,7 @@ function Products() {
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">{product.warranty}</td>
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">{formatPrice(product.price)}</td>
                   <td className="px-2 sm:px-6 py-3 text-right text-sm font-medium">
-                    <div className="relative">
+                    <div className="relative action-dropdown">
                       <button
                         onClick={() => handleActionClick(product._id)}
                         className="text-gray-400 hover:text-gray-500 focus:outline-none"
@@ -709,7 +709,7 @@ function Products() {
                         <MoreVertical className="h-5 w-5" />
                       </button>
                       {actionDropdownOpen === product._id && (
-                        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                        <div className="fixed right-[24px] mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                           <div
                             className="py-1"
                             role="menu"

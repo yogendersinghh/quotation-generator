@@ -209,7 +209,7 @@ function Models() {
                         <MoreVertical className="h-5 w-5" />
                       </button>
                       {actionDropdownOpen === model._id && (
-                        <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                        <div className="fixed right-[24px] mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                           <button onClick={() => handleEditModel(model)} className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                             <Edit2 className="h-4 w-4 mr-2" /> Edit
                           </button>
