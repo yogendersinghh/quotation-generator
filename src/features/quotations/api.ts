@@ -9,7 +9,7 @@ const mapStatusToBackend = (status: string): string => {
     case 'approved':
       return 'accepted';
     case 'rejected':
-      return 'pending';
+      return 'rejected';
     case 'pending':
       return 'draft';
     default:
@@ -52,11 +52,12 @@ export const quotationsApi = {
   updateQuotationStatus: async (quotationId: string, status: 'pending' | 'approved' | 'rejected'): Promise<void> => {
     console.log('Making PATCH request to update quotation status:', `/api/quotations/admin/${quotationId}/status`);
     
-    const payloadStatus = mapStatusToBackend(status);
+    // Map frontend status to API action
+    const action = status === 'approved' ? 'approve' : 'reject';
     
-    console.log('Status update:', { status, payloadStatus });
+    console.log('Status update:', { status, action });
     try {
-      await apiClient.patch(`/api/quotations/admin/${quotationId}/status`, { status: payloadStatus });
+      await apiClient.patch(`/api/quotations/admin/${quotationId}/status`, { action });
       console.log('Quotation status updated successfully:', quotationId);
     } catch (error: any) {
       console.error('Update quotation status API error:', {
