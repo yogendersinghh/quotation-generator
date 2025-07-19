@@ -8,6 +8,7 @@ import React, {
 import { useAuth } from "../features/auth/hooks/useAuth";
 import { useAuthContext } from "../features/auth/context/AuthContext";
 import { useUsers } from "../features/users/hooks/useUsers";
+import { useAllClients, useCompanyNames } from '../features/clients/hooks/useClients';
 import {
   useQuotations,
   useUpdateQuotationStatus,
@@ -34,14 +35,20 @@ import {
   MoreVertical,
   Check,
   X,
+  Eye,
+  Download,
 } from "lucide-react";
+import { apiClient } from '../lib/axios';
+import { CreateClientForm } from '../features/clients/components/CreateClientForm';
 // import { AuthDebug } from '../components/AuthDebug';
 
 function Dashboard() {
   const { user } = useAuth();
   const { isInitialized } = useAuthContext();
   const queryClient = useQueryClient();
-  const [selectedUser, setSelectedUser] = useState<string>("");
+  // Change: Default selectedUser to 'ALL_USERS' (special value for all users)
+  const ALL_USERS = "ALL_USERS";
+  const [selectedUser, setSelectedUser] = useState<string>(ALL_USERS);
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [debouncedUserSearch, setDebouncedUserSearch] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -74,6 +81,15 @@ function Dashboard() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Add state for new filters
+  const [selectedClient, setSelectedClient] = useState<string>("");
+  const [selectedCompanyName, setSelectedCompanyName] = useState<string>("");
+  // Fetch all clients and company names
+  const { data: allClients = [], isLoading: clientsLoading } = useAllClients();
+  const { data: companyNames = [], isLoading: companyNamesLoading } = useCompanyNames();
+  const [exporting, setExporting] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
   // Ref for the user dropdown
   const userDropdownRef = useRef<HTMLDivElement>(null);
@@ -157,7 +173,7 @@ function Dashboard() {
     data: dashboardStatsData,
     isLoading: dashboardStatsLoading,
     refetch: refetchDashboardStats,
-  } = useDashboardStats(selectedUser || undefined);
+  } = useDashboardStats(selectedUser === ALL_USERS ? undefined : selectedUser);
 
   console.log("Dashboard stats hook debug:", {
     selectedUser,
@@ -186,12 +202,14 @@ function Dashboard() {
     limit: pageSize,
     sortBy: "title",
     sortOrder: "desc",
-    userId: selectedUser,
+    userId: selectedUser === ALL_USERS ? undefined : selectedUser,
     search: searchTerm,
     fromMonth: fromMonth || undefined,
     toMonth: toMonth || undefined,
     status: selectedQuotationStatus || undefined,
     converted: selectedAdminStatus || undefined,
+    client: selectedClient || undefined,
+    companyName: selectedCompanyName || undefined,
   });
 
   // Update quotation status mutation
@@ -315,6 +333,38 @@ function Dashboard() {
   // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      // Build query params from filters
+      const params = new URLSearchParams();
+      if (selectedClient) params.append('client', selectedClient);
+      if (fromMonth) params.append('fromMonth', fromMonth);
+      if (toMonth) params.append('toMonth', toMonth);
+      if (selectedQuotationStatus) params.append('status', selectedQuotationStatus);
+      if (selectedAdminStatus) params.append('converted', selectedAdminStatus);
+      if (searchTerm) params.append('search', searchTerm);
+      if (selectedCompanyName) params.append('companyName', selectedCompanyName);
+      const url = `/api/quotations/export/excel${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await apiClient.get(url, {
+        responseType: 'blob',
+      });
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', 'quotations.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      alert('Failed to export Excel.');
+      console.error(error);
+    } finally {
+      setExporting(false);
+    }
   };
 
   // NOW we can have conditional returns after all hooks are called
@@ -441,10 +491,15 @@ function Dashboard() {
             className="w-full flex items-center justify-between px-4 py-2 text-left border border-gray-300 rounded-md shadow-sm bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-gray-400" />
+              {/* <User className="w-5 h-5 text-gray-400" /> */}
               <span className="block truncate">
                 {usersLoading ? (
                   "Loading users..."
+                ) : selectedUser === ALL_USERS ? (
+                  <span className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-gray-400" />
+                    All Users
+                  </span>
                 ) : selectedUser ? (
                   <span className="flex items-center gap-2">
                     {users.find((u) => u._id === selectedUser)?.name}
@@ -478,7 +533,16 @@ function Dashboard() {
                   <Search className="w-4 h-4 text-gray-400 absolute left-2 top-1/2 transform -translate-y-1/2" />
                 </div>
               </div>
-
+              {/* All Users button */}
+              <button
+                onClick={() => handleUserSelect(ALL_USERS)}
+                className={`w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center gap-2 ${selectedUser === ALL_USERS ? "bg-primary-bg" : ""}`}
+              >
+                {/* <Users className="w-4 h-4 text-gray-400" /> */}
+                <span className="font-medium">All Users</span>
+                {selectedUser === ALL_USERS && <span className="text-primary-dark ml-auto">✓</span>}
+              </button>
+              {/* User list */}
               {usersLoading ? (
                 <div className="px-3 py-4 text-sm text-gray-500 text-center">
                   <div className="flex items-center justify-center">
@@ -494,7 +558,7 @@ function Dashboard() {
                       <div>Error loading users</div>
                       <button
                         onClick={() => window.location.reload()}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 mt-1"
+                        className="text-xs text-primary-dark hover:text-primary-darker mt-1"
                       >
                         Click to retry
                       </button>
@@ -512,16 +576,14 @@ function Dashboard() {
                   <button
                     key={u._id}
                     onClick={() => handleUserSelect(u._id)}
-                    className={`w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center justify-between ${
-                      selectedUser === u._id ? "bg-indigo-50" : ""
-                    }`}
+                    className={`w-full px-3 py-2 text-left hover:bg-gray-50 flex items-center justify-between ${selectedUser === u._id ? "bg-primary-bg" : ""}`}
                   >
                     <span className="flex items-center gap-2">
                       <span className="font-medium">{u.name}</span>
                       <span className="text-sm text-gray-500">({u.role})</span>
                     </span>
                     {selectedUser === u._id && (
-                      <span className="text-indigo-600">✓</span>
+                      <span className="text-primary-dark">✓</span>
                     )}
                   </button>
                 ))
@@ -532,7 +594,7 @@ function Dashboard() {
 
         {/* Search Bar */}
         <div className="relative">
-          {selectedUser ? (
+          {selectedUser === ALL_USERS ? (
             <SearchBar
               placeholder="Search quotations..."
               onSearch={setSearchTerm}
@@ -558,65 +620,11 @@ function Dashboard() {
         </div>
       </div>
 
-      {!selectedUser ? (
-        <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="max-w-md mx-auto">
-            <UserPlus className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No User Selected
-            </h3>
-            <p className="text-gray-500 mb-4">
-              Please select a user from the dropdown above to view their
-              quotations and statistics.
-            </p>
-            <button
-              onClick={() => setIsUserDropdownOpen(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Select User
-            </button>
-          </div>
-        </div>
-      ) : (
+      {/* Always show stats and table, for all users or a specific user */}
         <>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-4">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
-                  <DollarSign className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Total Quotations
-                  </h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading
-                      ? "..."
-                      : dashboardStats.totalQuotations}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Pending Approval
-                  </h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading
-                      ? "..."
-                      : dashboardStats.pendingApprovals}
-                  </p>
-                </div>
-              </div>
-            </div>
-
+            {/* Total Clients */}
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-green-100 text-green-600">
@@ -627,14 +635,45 @@ function Dashboard() {
                     Total Clients
                   </h3>
                   <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading
-                      ? "..."
-                      : dashboardStats.totalClients}
+                    {dashboardStatsLoading ? "..." : dashboardStats.totalClients}
                   </p>
                 </div>
               </div>
             </div>
 
+            {/* Engaged Clients (static) */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                  <UserPlus className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Engaged Clients
+                  </h3>
+                  <p className="text-2xl font-bold text-gray-900">12</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pending Approval */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Pending Approval
+                  </h3>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {dashboardStatsLoading ? "..." : dashboardStats.pendingApprovals}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Under Discussion (static) */}
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-blue-100 text-blue-600">
@@ -642,17 +681,14 @@ function Dashboard() {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-500">
-                    Under Development
+                    Under Discussion
                   </h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading
-                      ? "..."
-                      : dashboardStats.underDevelopment}
-                  </p>
+                  <p className="text-2xl font-bold text-gray-900">7</p>
                 </div>
               </div>
             </div>
 
+            {/* Booked */}
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-green-100 text-green-600">
@@ -667,6 +703,7 @@ function Dashboard() {
               </div>
             </div>
 
+            {/* Lost */}
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-red-100 text-red-600">
@@ -676,6 +713,23 @@ function Dashboard() {
                   <h3 className="text-sm font-medium text-gray-500">Lost</h3>
                   <p className="text-2xl font-bold text-gray-900">
                     {dashboardStatsLoading ? "..." : dashboardStats.lost}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Quotations (at the end) */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-primary-light text-primary-dark">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-sm font-medium text-gray-500">
+                    Total Quotations
+                  </h3>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {dashboardStatsLoading ? "..." : dashboardStats.totalQuotations}
                   </p>
                 </div>
               </div>
@@ -798,6 +852,49 @@ function Dashboard() {
                     <option value="Lost">Lost</option>
                   </select>
                 </div>
+
+                {/* Client Name Filter */}
+                <div>
+                  <label htmlFor="client-name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Client Name
+                  </label>
+                  <select
+                    id="client-name"
+                    value={selectedClient}
+                    onChange={e => {
+                      setSelectedClient(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={clientsLoading || quotationsLoading}
+                    className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">All Clients</option>
+                    {allClients.map(client => (
+                      <option key={client._id} value={client._id}>{client.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Company Name Filter */}
+                <div>
+                  <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Company Name
+                  </label>
+                  <select
+                    id="company-name"
+                    value={selectedCompanyName}
+                    onChange={e => {
+                      setSelectedCompanyName(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={companyNamesLoading || quotationsLoading}
+                    className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">All Companies</option>
+                    {companyNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {(fromMonth ||
@@ -809,7 +906,7 @@ function Dashboard() {
                   <button
                     onClick={clearFilters}
                     disabled={quotationsLoading}
-                    className="px-4 py-2 text-sm text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-sm text-primary hover:text-primary-dark bg-primary-bg hover:bg-primary-light rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Clear Filters
                   </button>
@@ -848,22 +945,38 @@ function Dashboard() {
 
           {/* Quotations Table */}
           <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
+            <div className="px-6 py-4 border-b border-primary-bg">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-900">
                   Quotations
                 </h3>
-                <div className="text-sm text-gray-500">
-                  {quotationsLoading
-                    ? "Loading..."
-                    : `Showing ${quotations.length} of ${
-                        pagination?.total || 0
-                      } quotations`}
+                <div className="flex items-center gap-4">
+                  <button
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow transition-colors"
+                    onClick={() => setShowAddCustomerModal(true)}
+                  >
+                    Add Customer
+                  </button>
+                  <button
+                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-md shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleExportExcel}
+                    disabled={exporting}
+                  >
+                    {exporting ? 'Exporting...' : 'Export Excel'}
+                  </button>
+                  <div className="text-sm text-gray-500">
+                    {quotationsLoading
+                      ? "Loading..."
+                      : `Showing ${quotations.length} of ${pagination?.total || 0} quotations`}
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="min-h-[65px]">
-              <table className="min-w-full divide-y divide-gray-200">
+            {showAddCustomerModal && (
+              <CreateClientForm onClose={() => setShowAddCustomerModal(false)} />
+            )}
+            <div className="min-h-[65px] overflow-scroll">
+              <table className="min-w-full divide-y divide-primary-bg">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-8 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -923,70 +1036,84 @@ function Dashboard() {
                         </span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">
-                        {quotation.status == "draft" ? (
-                          <div className="relative">
-                            <button
-                              onClick={() => handleActionClick(quotation._id)}
-                              className="text-gray-400 hover:text-gray-500 focus:outline-none"
-                            >
-                              <MoreVertical className="h-5 w-5" />
-                            </button>
-
-                            {actionDropdownOpen === quotation._id && (
-                              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                                <div
-                                  className="py-1"
-                                  role="menu"
-                                  aria-orientation="vertical"
-                                >
-                                  <button
-                                    onClick={() =>
-                                      handleActionSelect(
-                                        quotation._id,
-                                        "approved"
-                                      )
-                                    }
-                                    disabled={updateQuotationStatus.isPending}
-                                    className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    role="menuitem"
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                            title="Preview"
+                            onClick={() => {/* TODO: Preview logic */}}
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                            title="Download"
+                            onClick={() => {/* TODO: Download logic */}}
+                          >
+                            <Download className="w-5 h-5" />
+                          </button>
+                          {quotation.status == "draft" ? (
+                            <div className="relative min-w-[77px]">
+                              <button
+                                onClick={() => handleActionClick(quotation._id)}
+                                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                              >
+                                <MoreVertical className="h-5 w-5" />
+                              </button>
+                              {actionDropdownOpen === quotation._id && (
+                                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                                  <div
+                                    className="py-1"
+                                    role="menu"
+                                    aria-orientation="vertical"
                                   >
-                                    {updateQuotationStatus.isPending ? (
-                                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-500 mr-2"></div>
-                                    ) : (
-                                      <Check className="w-4 h-4 mr-2 text-green-500" />
-                                    )}
-                                    {updateQuotationStatus.isPending
-                                      ? "Approving..."
-                                      : "Approve"}
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleActionSelect(
-                                        quotation._id,
-                                        "rejected"
-                                      )
-                                    }
-                                    disabled={updateQuotationStatus.isPending}
-                                    className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    role="menuitem"
-                                  >
-                                    {updateQuotationStatus.isPending ? (
-                                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-500 mr-2"></div>
-                                    ) : (
-                                      <X className="w-4 h-4 mr-2 text-red-500" />
-                                    )}
-                                    {updateQuotationStatus.isPending
-                                      ? "Rejecting..."
-                                      : "Reject"}
-                                  </button>
+                                    <button
+                                      onClick={() =>
+                                        handleActionSelect(
+                                          quotation._id,
+                                          "approved"
+                                        )
+                                      }
+                                      disabled={updateQuotationStatus.isPending}
+                                      className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      role="menuitem"
+                                    >
+                                      {updateQuotationStatus.isPending ? (
+                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-green-500 mr-2"></div>
+                                      ) : (
+                                        <Check className="w-4 h-4 mr-2 text-green-500" />
+                                      )}
+                                      {updateQuotationStatus.isPending
+                                        ? "Approving..."
+                                        : "Approve"}
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleActionSelect(
+                                          quotation._id,
+                                          "rejected"
+                                        )
+                                      }
+                                      disabled={updateQuotationStatus.isPending}
+                                      className="w-full flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      role="menuitem"
+                                    >
+                                      {updateQuotationStatus.isPending ? (
+                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-red-500 mr-2"></div>
+                                      ) : (
+                                        <X className="w-4 h-4 mr-2 text-red-500" />
+                                      )}
+                                      {updateQuotationStatus.isPending
+                                        ? "Rejecting..."
+                                        : "Reject"}
+                                    </button>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="px-3 py-1.5 text-xs font-medium rounded-full">Analyzed</span>
-                        )}
-
+                              )}
+                            </div>
+                          ) : (
+                            <span className="min-w-[77px] px-3 py-1.5 text-xs font-medium rounded-full">Analyzed</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1069,7 +1196,7 @@ function Dashboard() {
                             disabled={quotationsLoading}
                             className={`px-3 py-1 text-sm border rounded-md ${
                               pagination.page === pageNum
-                                ? "bg-indigo-600 text-white border-indigo-600"
+                                ? "bg-primary text-white border-primary"
                                 : "border-gray-300 hover:bg-gray-50"
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
@@ -1097,7 +1224,6 @@ function Dashboard() {
             </div>
           )}
         </>
-      )}
     </div>
   );
 }

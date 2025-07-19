@@ -22,6 +22,14 @@ interface ProductOption {
   image?: string;
   description?: string;
   notes?: string;
+  make?: string;
+  model?: string;
+  price?: number;
+  warranty?: string;
+  quality?: string;
+  specification?: string;
+  termsAndCondition?: string;
+  features?: string[];
 }
 interface ProductRow {
   product: ProductOption;
@@ -48,7 +56,8 @@ function CreateQuotation() {
   const [title, setTitle] = useState("");
   const [customer, setCustomer] = useState<CustomerOption | null>(null);
   const [subject, setSubject] = useState("");
-  const [formalMessage, setFormalMessage] = useState(`<p><strong>1. Dear Sir,</strong></p>
+  const [formalMessage, setFormalMessage] =
+    useState(`<p><strong>1. Dear Sir,</strong></p>
 
 <p>With reference to your requirement for Air Cooling, we are pleased to submit our proposal for supply & installation of Symphony Industrial / Commercial Air Coolers.</p>
 
@@ -57,7 +66,9 @@ function CreateQuotation() {
   const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<ProductOption[]>([]);
-  const [suggestedProducts, setSuggestedProducts] = useState<ProductOption[]>([]);
+  const [suggestedProducts, setSuggestedProducts] = useState<ProductOption[]>(
+    []
+  );
   const [machineInstall, setMachineInstall] = useState({
     qty: "",
     unit: "",
@@ -65,7 +76,8 @@ function CreateQuotation() {
     total: "",
   });
   // Step 3 fields
-  const [notes, setNotes] = useState(`<p>Recommended water supply should be less than 400 TDS. All electrical work under customer scope.</p>
+  const [notes, setNotes] =
+    useState(`<p>Recommended water supply should be less than 400 TDS. All electrical work under customer scope.</p>
 
 <p>Size of wire suitable to ampere rating of the motor which shall be selected by qualified Electrician of the customer.</p>
 
@@ -74,7 +86,8 @@ function CreateQuotation() {
 <p>Any change in quantity shall be charged extra.</p>
 
 <p>Any kind of charges / scope of work which is not specified in above, will be extra as per actual.</p>`);
-  const [billing, setBilling] = useState(`<p><strong>Material will be billed through</strong></p>
+  const [billing, setBilling] =
+    useState(`<p><strong>Material will be billed through</strong></p>
 
 <p><strong>M/s FIVE STAR TECHNOLOGIES</strong><br>
 C-165 , SECTOR-10 , NOIDA - 201301<br>
@@ -101,6 +114,57 @@ GST : 09AACFF0291J1ZF</p>`);
   }>({});
 
   const [isEditLoading, setIsEditLoading] = useState(false);
+  const [showMore, setShowMore] = useState<{ [productId: string]: boolean }>(
+    {}
+  );
+
+  // Add state to track which optional fields are included for each product
+  const [includedFields, setIncludedFields] = useState<{
+    [productId: string]: { [field: string]: boolean };
+  }>({});
+
+  // Add state to track edited make/model per product row
+  const [editedFields, setEditedFields] = useState<{
+    [productId: string]: { make?: string; model?: string };
+  }>({});
+
+  // Add state to track edited optional fields per product row
+  const [editedOptionals, setEditedOptionals] = useState<{ [productId: string]: { [field: string]: string } }>({});
+
+  // Helper to toggle a field for a product
+  function toggleField(productId: string, field: string) {
+    setIncludedFields((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        [field]: !prev[productId]?.[field],
+      },
+    }));
+  }
+
+  function handleEditField(
+    productId: string,
+    field: "make" | "model",
+    value: string
+  ) {
+    setEditedFields((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        [field]: value,
+      },
+    }));
+  }
+
+  function handleEditOptional(productId: string, field: string, value: string) {
+    setEditedOptionals(prev => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        [field]: value,
+      },
+    }));
+  }
 
   const { data: clientsData, isLoading: clientsLoading } = useClients({
     limit: 1000,
@@ -115,6 +179,7 @@ GST : 09AACFF0291J1ZF</p>`);
   const { data: productsData, isLoading: productsLoading } = useProducts({
     limit: 1000,
   });
+  // --- Update productOptions mapping ---
   const productOptions: ProductOption[] = (productsData?.products || []).map(
     (product) => ({
       value: product._id,
@@ -122,8 +187,18 @@ GST : 09AACFF0291J1ZF</p>`);
       image: product.productImage
         ? `https://cms-be.yogendersingh.tech/public/products/${product.productImage}`
         : undefined,
-      description: product.notes || "",
+      description: product.description || "",
       notes: product.notes || "",
+      make: isNameObject(product.make) ? product.make.name : product.make || "",
+      model: isNameObject(product.model)
+        ? product.model.name
+        : product.model || "",
+      price: product.price,
+      warranty: product.warranty || "",
+      quality: product.quality || "",
+      specification: product.specification || "",
+      termsAndCondition: product.termsAndCondition || "",
+      features: Array.isArray(product.features) ? product.features : [],
     })
   );
 
@@ -131,11 +206,16 @@ GST : 09AACFF0291J1ZF</p>`);
   useEffect(() => {
     if (!id) return;
     setIsEditLoading(true);
-    apiClient.get(`/api/quotations/${id}`)
-      .then(res => {
+    apiClient
+      .get(`/api/quotations/${id}`)
+      .then((res) => {
         const data = res.data;
         setTitle(data.title || "");
-        setCustomer(data.client ? { value: data.client._id, label: data.client.name } : null);
+        setCustomer(
+          data.client
+            ? { value: data.client._id, label: data.client.name }
+            : null
+        );
         setSubject(data.subject || "");
         setFormalMessage(data.formalMessage || "");
         setNotes(data.notes || "");
@@ -143,7 +223,11 @@ GST : 09AACFF0291J1ZF</p>`);
         setSupply(data.supply || "");
         setIC(data.installationAndCommissioning || "");
         setTnc(data.termsAndConditions || "");
-        setSignatureUrl(data.signatureImage ? `https://cms-be.yogendersingh.tech/public/signatures/${data.signatureImage}` : "");
+        setSignatureUrl(
+          data.signatureImage
+            ? `https://cms-be.yogendersingh.tech/public/signatures/${data.signatureImage}`
+            : ""
+        );
         setSignatureFileName(data.signatureImage || ""); // Ensure this is always set from fetched data
         setMachineInstall({
           qty: data.machineInstallation?.quantity?.toString() || "",
@@ -163,41 +247,62 @@ GST : 09AACFF0291J1ZF</p>`);
 
   // Map fetched products to productOptions for Select
   const [fetchedProducts, setFetchedProducts] = useState<any[]>([]);
-  const [fetchedRelatedProducts, setFetchedRelatedProducts] = useState<string[]>([]);
-  const [fetchedSuggestedProducts, setFetchedSuggestedProducts] = useState<string[]>([]);
+  const [fetchedRelatedProducts, setFetchedRelatedProducts] = useState<
+    string[]
+  >([]);
+  const [fetchedSuggestedProducts, setFetchedSuggestedProducts] = useState<
+    string[]
+  >([]);
   useEffect(() => {
     if (!id || !productsData || !fetchedProducts.length) return;
     // Map fetched product IDs to productOptions
-    const selected = fetchedProducts.map((p) =>
-      productOptions.find((opt) => opt.value === p.product._id)
-    ).filter(Boolean);
+    const selected = fetchedProducts
+      .map((p) => productOptions.find((opt) => opt.value === p.product._id))
+      .filter(Boolean);
     setSelectedProducts(selected as ProductOption[]);
-    setProductRows(fetchedProducts.map((p) => {
-      const opt = productOptions.find((opt) => opt.value === p.product._id);
-      return {
-        product: opt || {
-          value: p.product._id,
-          label: p.product.title,
-          image: p.product.productImage,
-          description: p.product.description,
-          notes: p.product.notes,
-        },
-        qty: p.quantity?.toString() || "",
-        unit: p.unit || "",
-      };
-    }));
+    // --- Update productRows mapping ---
+    setProductRows(
+      fetchedProducts.map((p) => {
+        const opt = productOptions.find((opt) => opt.value === p.product._id);
+        return {
+          product: opt || {
+            value: p.product._id,
+            label: p.product.title,
+            image: p.product.productImage,
+            description: p.product.description || "",
+            notes: p.product.notes || "",
+            make: isNameObject(p.product.make)
+              ? p.product.make.name
+              : p.product.make || "",
+            model: isNameObject(p.product.model)
+              ? p.product.model.name
+              : p.product.model || "",
+            price: p.product.price,
+            warranty: p.product.warranty || "",
+            quality: p.product.quality || "",
+            specification: p.product.specification || "",
+            termsAndCondition: p.product.termsAndCondition || "",
+            features: Array.isArray(p.product.features)
+              ? p.product.features
+              : [],
+          },
+          qty: p.quantity?.toString() || "",
+          unit: p.unit || "",
+        };
+      })
+    );
   }, [id, productsData, fetchedProducts]);
 
   // Map fetched related and suggested products
   useEffect(() => {
     if (!id || !productsData) return;
-    
+
     // Map related products
     const related = fetchedRelatedProducts
       .map((productId) => productOptions.find((opt) => opt.value === productId))
       .filter(Boolean);
     setRelatedProducts(related as ProductOption[]);
-    
+
     // Map suggested products
     const suggested = fetchedSuggestedProducts
       .map((productId) => productOptions.find((opt) => opt.value === productId))
@@ -246,7 +351,9 @@ GST : 09AACFF0291J1ZF</p>`);
   };
 
   // Signature upload
-  const handleSignatureChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSignatureChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       setSignature(file);
@@ -254,14 +361,18 @@ GST : 09AACFF0291J1ZF</p>`);
       setSignatureUploadLoading(true);
       try {
         const formData = new FormData();
-        formData.append('signature', file);
-        const response = await apiClient.post('/api/upload/signature', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        console.log("response.data.fileName",response.data.filename)
+        formData.append("signature", file);
+        const response = await apiClient.post(
+          "/api/upload/signature",
+          formData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
+        console.log("response.data.fileName", response.data.filename);
         setSignatureFileName(response.data.filename);
       } catch (err) {
-        alert('Failed to upload signature.');
+        alert("Failed to upload signature.");
         setSignatureFileName("");
       } finally {
         setSignatureUploadLoading(false);
@@ -294,10 +405,10 @@ GST : 09AACFF0291J1ZF</p>`);
       }
 
       // Prepare products data
-      const products = productRows.map(row => ({
+      const products = productRows.map((row) => ({
         product: row.product.value,
         quantity: parseInt(row.qty) || 0,
-        unit: row.unit
+        unit: row.unit,
       }));
 
       // Prepare machine installation data
@@ -305,30 +416,40 @@ GST : 09AACFF0291J1ZF</p>`);
         quantity: parseInt(machineInstall.qty) || 0,
         unit: machineInstall.unit,
         price: parseFloat(machineInstall.price) || 0,
-        total: parseFloat(machineInstall.total) || 0
+        total: parseFloat(machineInstall.total) || 0,
       };
 
       // Generate quotation reference number (you might want to implement a proper generator)
-      const quotationRefNumber = `QT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const quotationRefNumber = `QT-${Date.now()}-${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
 
       // Prepare the request payload
       const quotationData = {
         quotationRefNumber,
         title: title || "Quotation for Industrial Equipment",
         client: customer?.value || "",
-        subject: subject || "Created by " + (user?.name || "User") + " Supply of Industrial Equipment",
-        formalMessage: formalMessage || "Dear Sir/Madam,\n\nWe are pleased to submit our quotation for the requested equipment...",
+        subject:
+          subject ||
+          "Created by " +
+            (user?.name || "User") +
+            " Supply of Industrial Equipment",
+        formalMessage:
+          formalMessage ||
+          "Dear Sir/Madam,\n\nWe are pleased to submit our quotation for the requested equipment...",
         products,
         machineInstallation,
         notes: notes || "Additional notes here",
-        billingDetails: billing || "Payment terms: 50% advance, 50% before delivery",
+        billingDetails:
+          billing || "Payment terms: 50% advance, 50% before delivery",
         supply: supply || "Delivery within 30 days",
-        installationAndCommissioning: ic || "Installation and commissioning included",
+        installationAndCommissioning:
+          ic || "Installation and commissioning included",
         termsAndConditions: tnc || "Standard terms and conditions apply",
         signatureImage: signatureFileName,
         totalAmount: calculatePrice(),
-        relatedProducts: relatedProducts.map(p => p.value),
-        suggestedProducts: suggestedProducts.map(p => p.value)
+        relatedProducts: relatedProducts.map((p) => p.value),
+        suggestedProducts: suggestedProducts.map((p) => p.value),
       };
 
       console.log("Sending quotation data to API:", quotationData);
@@ -336,18 +457,20 @@ GST : 09AACFF0291J1ZF</p>`);
       let result;
       if (id) {
         // Update quotation
-        const response = await apiClient.put(`/api/quotations/${id}`, quotationData);
+        const response = await apiClient.put(
+          `/api/quotations/${id}`,
+          quotationData
+        );
         result = response.data;
       } else {
         // Create quotation
-        const response = await apiClient.post('/api/quotations', quotationData);
+        const response = await apiClient.post("/api/quotations", quotationData);
         result = response.data;
       }
       console.log("Quotation saved successfully:", result);
       navigate("/quotations");
-      
     } catch (error) {
-      console.log("🚀 ~ handleGeneratePDF ~ error:", error)
+      console.log("🚀 ~ handleGeneratePDF ~ error:", error);
       // Enhanced error logging
       const err = error as any;
       if (err.response) {
@@ -362,6 +485,16 @@ GST : 09AACFF0291J1ZF</p>`);
       }
     }
   };
+
+  // Helper type guard
+  function isNameObject(val: any): val is { name: string } {
+    return (
+      val &&
+      typeof val === "object" &&
+      "name" in val &&
+      typeof val.name === "string"
+    );
+  }
 
   // Main page layout
   return (
@@ -437,7 +570,6 @@ GST : 09AACFF0291J1ZF</p>`);
               Formal Message
             </label>
             <CKEditor
-            
               editor={ClassicEditor}
               data={formalMessage}
               onChange={(_, editor) => setFormalMessage(editor.getData())}
@@ -479,142 +611,201 @@ GST : 09AACFF0291J1ZF</p>`);
             <table className="w-full mt-4 border rounded">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="px-2 py-1">Display</th>
-                  <th className="px-2 py-1">Description / Notes</th>
-                  <th className="px-2 py-1">Qty</th>
-                  <th className="px-2 py-1">Unit</th>
+                  <th className="px-2 py-1 text-left">Product Title</th>
+                  <th className="px-2 py-1 text-left">Make</th>
+                  <th className="px-2 py-1 text-left">Model</th>
+                  <th className="px-2 py-1 text-left">Qty</th>
+                  <th className="px-2 py-1 text-left">Unit</th>
+                  <th className="px-2 py-1 text-left">Price</th>
+                  <th className="px-2 py-1 text-left">Total Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {productRows.map((row, idx) => (
-                  <tr key={row.product.value} className="border-b border-grey">
-                    <td className="px-2 py-1 pb-8 pt-8">
-                      <Select
-                        value={{
-                          value: displayOptions[row.product.value] || "name",
-                          label:
-                            (displayOptions[row.product.value] || "name") ===
-                            "name"
-                              ? "Name"
-                              : "Image",
-                        }}
-                        onChange={(opt) =>
-                          setDisplayOptions((opts) => ({
-                            ...opts,
-                            [row.product.value]: opt?.value || "name",
-                          }))
-                        }
-                        options={[
-                          { value: "name", label: "Name" },
-                          { value: "image", label: "Image" },
-                        ]}
-                        isSearchable={false}
-                        styles={{
-                          container: (base) => ({ ...base, width: '100%', height : '38px' }),
-                        }}
-                      />
-                      {(displayOptions[row.product.value] || "name") ===
-                      "name" ? (
-                        <div className="h-[38px] mt-[6px] flex items-center"><span className="ml-2 block">{row.product.label}</span></div>
-                      ) : (
-                        <img
-                          src={
-                            row.product.image ||
-                            "https://via.placeholder.com/50x50?text=No+Image"
-                          }
-                          alt={row.product.label}
-                          style={{
-                            width: 50,
-                            height: 50,
-                            objectFit: "contain",
-                            display: "inline-block",
-                            marginLeft: 8,
-                          }}
-                        />
-                      )}
-                    </td>
+                {productRows.map((row, idx) => {
+                  const product = row.product;
+                  const price =
+                    typeof product.price === "number" ? product.price : 0;
+                  const qty = parseFloat(row.qty) || 0;
+                  const total = price * qty;
+                  const fields = [
+                    { key: "image", label: "Image", value: product.image },
+                    { key: "notes", label: "Notes", value: product.notes },
+                    {
+                      key: "specification",
+                      label: "Specification",
+                      value: product.specification,
+                    },
+                    {
+                      key: "description",
+                      label: "Description",
+                      value: product.description,
+                    },
+                    {
+                      key: "features",
+                      label: "Features",
+                      value: Array.isArray(product.features)
+                        ? product.features.join(", ")
+                        : String(product.features),
+                    },
+                    {
+                      key: "termsAndCondition",
+                      label: "Terms and Conditions",
+                      value: product.termsAndCondition,
+                    },
+                    {
+                      key: "warranty",
+                      label: "Product Warranty",
+                      value: product.warranty,
+                    },
+                    {
+                      key: "quality",
+                      label: "Quality",
+                      value: product.quality,
+                    },
+                  ];
+                  return (
+                    <React.Fragment key={product.value}>
+                      <tr>
+                        <td colSpan={7} className="bg-white px-[8px] py-[8px]">
+                          <div className="flex items-center gap-4">
+                            <span className="font-semibold text-gray-500">
+                              Serial No: {idx + 1}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
 
-                    <td className="px-2 py-1 pb-8 pt-8">
-                      <Select
-                        value={{
-                          value:
-                            descNoteOptions[row.product.value] || "description",
-                          label:
-                            (descNoteOptions[row.product.value] ||
-                              "description") === "description"
-                              ? "Description"
-                              : "Notes",
-                        }}
-                        onChange={(opt) =>
-                          setDescNoteOptions((opts) => ({
-                            ...opts,
-                            [row.product.value]: opt?.value || "description",
-                          }))
-                        }
-                        options={[
-                          { value: "description", label: "Description" },
-                          { value: "notes", label: "Notes" },
-                        ]}
-                        isSearchable={false}
-                        styles={{
-                          container: (base) => ({ ...base, width: '100%' }),
-                        }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Description or Notes"
-                        value={
-                          (descNoteOptions[row.product.value] ||
-                            "description") === "notes"
-                            ? customNotes[`${row.product.value}_notes`] ??
-                              row.product.notes ??
-                              ""
-                            : customNotes[`${row.product.value}_description`] ??
-                              row.product.description ??
-                              ""
-                        }
-                        onChange={(e) =>
-                          setCustomNotes((notes) => ({
-                            ...notes,
-                            [(descNoteOptions[row.product.value] ||
-                              "description") === "notes"
-                              ? `${row.product.value}_notes`
-                              : `${row.product.value}_description`]: e.target.value,
-                          }))
-                        }
-                        className="w-full border rounded px-2 py-1 mt-2"
-                      />
-                    </td>
-                    
-                    <td className="px-2 py-1 pb-8 pt-8">
-                      <div className="h-[38px]">
-                        <p>Product Qty</p>
-                      </div>
-                      <input
-                        type="number"
-                        min="1"
-                        value={row.qty}
-                        onChange={(e) =>
-                          handleProductRowChange(idx, "qty", e.target.value)
-                        }
-                        className="w-[100%] border rounded px-2 py-1 mt-[6px]"
-                      />
-                    </td>
-                    <td className="px-2 py-1 pb-8 pt-8">
-                      <div className="h-[38px]">
-                        <p>Product unit</p>
-                      </div>
-                      <input
-                        type="text"
-                        value={row.unit}
-                        onChange={(e) =>
-                          handleProductRowChange(idx, "unit", e.target.value)
-                        }
-                        className="w-[100%] border rounded px-2 py-1 mt-[6px]"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                      <tr className="border-b border-grey">
+                        <td className="px-2 py-1 ">{product.label}</td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="text"
+                            value={
+                              editedFields[product.value]?.make ??
+                              (isNameObject(product.make)
+                                ? product.make.name
+                                : product.make || "")
+                            }
+                            onChange={(e) =>
+                              handleEditField(
+                                product.value,
+                                "make",
+                                e.target.value
+                              )
+                            }
+                            className="w-full border rounded px-2 py-1"
+                            placeholder="Make"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="text"
+                            value={
+                              editedFields[product.value]?.model ??
+                              (isNameObject(product.model)
+                                ? product.model.name
+                                : product.model || "")
+                            }
+                            onChange={(e) =>
+                              handleEditField(
+                                product.value,
+                                "model",
+                                e.target.value
+                              )
+                            }
+                            className="w-full border rounded px-2 py-1"
+                            placeholder="Model"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="number"
+                            min="1"
+                            value={row.qty}
+                            onChange={(e) =>
+                              handleProductRowChange(idx, "qty", e.target.value)
+                            }
+                            className="w-[80px] border rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="text"
+                            value={row.unit}
+                            onChange={(e) =>
+                              handleProductRowChange(
+                                idx,
+                                "unit",
+                                e.target.value
+                              )
+                            }
+                            className="w-[80px] border rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-2 py-1">₹{price.toLocaleString()}</td>
+                        <td className="px-2 py-1">₹{total.toLocaleString()}</td>
+                      </tr>
+
+                      <tr>
+                        <td colSpan={7} className="bg-gray-50 px-4 py-2">
+                          <div className="flex flex-wrap gap-6">
+                            {fields.map(f => (
+                              <label key={f.key} className="flex flex-col items-start gap-1 min-w-[180px]">
+                                <span className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!includedFields[product.value]?.[f.key]}
+                                    onChange={() => toggleField(product.value, f.key)}
+                                    disabled={!f.value && f.key !== 'features'}
+                                  />
+                                  {f.key === 'image' ? (
+                                    f.value ? (
+                                      <span className="flex items-center gap-2">
+                                        <img src={f.value} alt="Product" className="w-10 h-10 object-cover rounded border" />
+                                        Image
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400 flex items-center gap-2">
+                                        <span className="w-10 h-10 bg-gray-200 rounded border flex items-center justify-center">N/A</span>
+                                        Image (N/A)
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className={f.value ? "" : "text-gray-400"}>{f.label}</span>
+                                  )}
+                                </span>
+                                {/* Editable input for enabled fields except image */}
+                                {f.key !== 'image' && includedFields[product.value]?.[f.key] && (
+                                  f.key === 'notes' || f.key === 'specification' || f.key === 'description' || f.key === 'termsAndCondition' ? (
+                                    <textarea
+                                      className="w-full border rounded px-2 py-1 mt-1"
+                                      rows={2}
+                                      value={editedOptionals[product.value]?.[f.key] ?? f.value ?? ''}
+                                      onChange={e => handleEditOptional(product.value, f.key, e.target.value)}
+                                      placeholder={f.label}
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      className="w-full border rounded px-2 py-1 mt-1"
+                                      value={editedOptionals[product.value]?.[f.key] ?? f.value ?? ''}
+                                      onChange={e => handleEditOptional(product.value, f.key, e.target.value)}
+                                      placeholder={f.label}
+                                    />
+                                  )
+                                )}
+                              </label>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                      {/* After the checkboxes row for each product, add a spacer row for vertical space */}
+                      <tr className="bg-primary-bg">
+                        <td colSpan={7} className="h-6 bg-transparent"></td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -794,7 +985,9 @@ GST : 09AACFF0291J1ZF</p>`);
                 setRelatedProducts(limitedOptions);
               }}
               placeholder={
-                productsLoading ? "Loading products..." : "Select related products (max 5)"
+                productsLoading
+                  ? "Loading products..."
+                  : "Select related products (max 5)"
               }
               isLoading={productsLoading}
             />
@@ -815,7 +1008,9 @@ GST : 09AACFF0291J1ZF</p>`);
                 setSuggestedProducts(limitedOptions);
               }}
               placeholder={
-                productsLoading ? "Loading products..." : "Select suggested products (max 5)"
+                productsLoading
+                  ? "Loading products..."
+                  : "Select suggested products (max 5)"
               }
               isLoading={productsLoading}
             />
@@ -835,7 +1030,26 @@ GST : 09AACFF0291J1ZF</p>`);
             />
             {signatureUploadLoading && (
               <div className="mt-2 flex items-center text-blue-600">
-                <svg className="animate-spin h-5 w-5 mr-2 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                <svg
+                  className="animate-spin h-5 w-5 mr-2 text-blue-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8z"
+                  ></path>
+                </svg>
                 Uploading signature...
               </div>
             )}
@@ -864,9 +1078,15 @@ GST : 09AACFF0291J1ZF</p>`);
         ) : (
           <button
             onClick={handleGeneratePDF}
-            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 ${signatureUploadLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 ${
+              signatureUploadLoading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
             disabled={signatureUploadLoading}
-            title={signatureUploadLoading ? 'Please wait for signature upload to finish' : ''}
+            title={
+              signatureUploadLoading
+                ? "Please wait for signature upload to finish"
+                : ""
+            }
           >
             <CheckCircle2 className="w-4 h-4 mr-2" /> Generate Quotation
           </button>

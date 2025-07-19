@@ -6,7 +6,7 @@ import { useAuthContext } from '../../auth/context/AuthContext';
 export const useQuotations = (filters: QuotationsFilters = {}) => {
   const { isAuthenticated, isInitialized } = useAuthContext();
   
-  const shouldEnable = isAuthenticated && isInitialized && !!filters.userId;
+  const shouldEnable = isAuthenticated && isInitialized;
   
   console.log('useQuotations hook:', {
     filters,
@@ -76,7 +76,7 @@ export const useUpdateQuotation = () => {
 export const useDashboardStats = (userId?: string) => {
   const { isAuthenticated, isInitialized } = useAuthContext();
   
-  const shouldEnable = isAuthenticated && isInitialized && !!userId;
+  const shouldEnable = isAuthenticated && isInitialized;
   
   console.log('useDashboardStats hook:', {
     userId,

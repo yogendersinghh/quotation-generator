@@ -25,6 +25,9 @@ import { useModels } from "../features/models/hooks/useModels";
 import { Link, useNavigate } from "react-router-dom";
 import type { Model } from "../features/models/types";
 import Select from "react-select";
+import { tokenStorage } from '../features/auth/utils';
+import { apiClient } from '../lib/axios';
+import { productsApi } from '../features/products/api';
 
 // Types
 type ProductModel = {
@@ -109,6 +112,7 @@ function Products() {
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [isFetchingEdit, setIsFetchingEdit] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(
@@ -193,6 +197,15 @@ function Products() {
   const [quality, setQuality] = useState("");
   const [specification, setSpecification] = useState("");
   const [termsAndCondition, setTermsAndCondition] = useState("");
+  const [make, setMake] = useState("");
+  const [dataSheetFile, setDataSheetFile] = useState<File | null>(null);
+  const [catalogFile, setCatalogFile] = useState<File | null>(null);
+  const [dataSheetFilename, setDataSheetFilename] = useState<string | null>(null);
+  const [catalogFilename, setCatalogFilename] = useState<string | null>(null);
+
+  // Add state for upload progress/feedback
+  const [dataSheetUploading, setDataSheetUploading] = useState(false);
+  const [catalogUploading, setCatalogUploading] = useState(false);
 
   // Refetch categories when modal opens
   useEffect(() => {
@@ -232,6 +245,11 @@ function Products() {
       setQuality(product.quality || "");
       setSpecification(product.specification || "");
       setTermsAndCondition(product.termsAndCondition || "");
+      setMake(product.make || "");
+      setDataSheetFile(product.dataSheet ? new File([], product.dataSheet) : null);
+      setCatalogFile(product.catalog ? new File([], product.catalog) : null);
+      setDataSheetFilename(product.dataSheet || null);
+      setCatalogFilename(product.catalog || null);
     }
   }, [editingProductData, editingProduct]);
 
@@ -280,6 +298,75 @@ function Products() {
     }
   };
 
+  // Handle datasheet upload
+  async function handleDataSheetChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files && e.target.files[0]) {
+      setDataSheetUploading(true);
+      const file = e.target.files[0];
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const token = tokenStorage.getToken();
+        const response = await apiClient.post(`/api/upload/datasheet-or-catalog?type=datasheet`, formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        setDataSheetFile(file);
+        setDataSheetFilename(response.data.filename);
+        // Optionally store response.data.filename if needed
+      } catch (err) {
+        alert('Failed to upload datasheet.');
+        setDataSheetFile(null);
+      } finally {
+        setDataSheetUploading(false);
+      }
+    }
+  }
+
+  // Handle catalog upload
+  async function handleCatalogChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files && e.target.files[0]) {
+      setCatalogUploading(true);
+      const file = e.target.files[0];
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const token = tokenStorage.getToken();
+        const response = await apiClient.post(`/api/upload/datasheet-or-catalog?type=catalog`, formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        setCatalogFile(file);
+        setCatalogFilename(response.data.filename);
+        // Optionally store response.data.filename if needed
+      } catch (err) {
+        alert('Failed to upload catalog.');
+        setCatalogFile(null);
+      } finally {
+        setCatalogUploading(false);
+      }
+    }
+  }
+
+  // Add remove handlers for datasheet and catalog
+  function handleRemoveDataSheet() {
+    setDataSheetFile(null);
+    setDataSheetFilename(null);
+    // Also clear the file input value if needed
+    const input = document.getElementById('datasheet-input') as HTMLInputElement;
+    if (input) input.value = '';
+  }
+  function handleRemoveCatalog() {
+    setCatalogFile(null);
+    setCatalogFilename(null);
+    const input = document.getElementById('catalog-input') as HTMLInputElement;
+    if (input) input.value = '';
+  }
+
   const handleAddOption = () => {
     if (!newOptionName.trim()) return;
 
@@ -321,7 +408,7 @@ function Products() {
   };
 
   const handleAddProduct = async () => {
-
+    console.log(productTitle,"++++++=", productModel, productPrice, productWarranty, selectedCategories)
     if (
       !productTitle.trim() ||
       !productModel ||
@@ -335,18 +422,21 @@ function Products() {
 
 
     const productData: any = {
+      productImage: productImageFilename || "",
       title: productTitle.trim(),
       model: productModel.trim(),
-      features: productFeatures.join(","), // Convert array to comma-separated string
+      features: productFeatures,
       price: parseFloat(productPrice),
       warranty: productWarranty.trim(),
-      productImage: productImageFilename || "",
       categories: selectedCategories,
       notes: notes.trim(),
       description: description.trim(),
       quality: quality.trim(),
       specification: specification.trim(),
       termsAndCondition: termsAndCondition.trim(),
+      dataSheet: dataSheetFilename,
+      catalog: catalogFilename,
+      make: make.trim(),
     };
 
     try {
@@ -357,10 +447,38 @@ function Products() {
     }
   };
 
-  const handleEditProduct = (product: Product) => {
-    setEditingProductId(product._id);
-    setEditingProduct(product);
+  const handleEditProduct = async (product: Product) => {
+    setIsFetchingEdit(true);
     setIsFormOpen(true);
+    setEditingProductId(product._id);
+    try {
+      const data = await productsApi.getProductById(product._id);
+      setEditingProduct(data);
+      // Prefill all form fields with fetched data
+      setProductTitle(data.title || '');
+      setProductModel(typeof data.model === 'object' ? data.model._id : data.model || '');
+      setProductFeatures(Array.isArray(data.features) ? data.features : []);
+      setProductPrice(data.price ? data.price.toString() : '');
+      setProductWarranty(data.warranty || '');
+      setProductImageFilename(data.productImage || '');
+      setSelectedCategories(Array.isArray(data.categories) ? data.categories.map((cat: any) => (typeof cat === 'object' ? cat._id : cat)) : []);
+      setNotes(data.notes || '');
+      setDescription(data.description || '');
+      setQuality(data.quality || '');
+      setSpecification(data.specification || '');
+      setTermsAndCondition(data.termsAndCondition || '');
+      setMake(data.make || '');
+      setDataSheetFile(null);
+      setCatalogFile(null);
+      setDataSheetFilename(data.dataSheet || null);
+      setCatalogFilename(data.catalog || null);
+    } catch (err) {
+      setEditingProduct(null);
+      alert('Failed to fetch product details.');
+    } finally {
+      setIsFetchingEdit(false);
+      setActionDropdownOpen(null);
+    }
   };
 
   const handleDeleteProduct = (product: Product) => {
@@ -393,18 +511,21 @@ function Products() {
     }
 
     const productData: any = {
+      productImage: productImageFilename || "",
       title: productTitle.trim(),
       model: productModel.trim(),
-      features: productFeatures.join(","),
+      features: productFeatures,
       price: parseFloat(productPrice),
       warranty: productWarranty.trim(),
-      productImage: productImageFilename || "",
       categories: selectedCategories,
       notes: notes.trim(),
       description: description.trim(),
       quality: quality.trim(),
       specification: specification.trim(),
       termsAndCondition: termsAndCondition.trim(),
+      dataSheet: dataSheetFilename,
+      catalog: catalogFilename,
+      make: make.trim(),
     };
 
     try {
@@ -436,6 +557,9 @@ function Products() {
     setQuality("");
     setSpecification("");
     setTermsAndCondition("");
+    setMake("");
+    setDataSheetFile(null);
+    setCatalogFile(null);
     refetchCategories();
   };
 
@@ -519,21 +643,21 @@ function Products() {
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           <button 
             onClick={() => navigate('/categories')}
-            className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-green-700 flex items-center justify-center"
+            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary flex items-center justify-center"
           >
             <FolderPlus className="w-4 h-4 mr-2" />
             Categories
           </button>
-          <button 
+          {/* <button 
             onClick={() => navigate('/models')}
             className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-blue-700 flex items-center justify-center"
           >
             <Plus className="w-4 h-4 mr-2" />
             Models
-          </button>
+          </button> */}
           <button 
             onClick={() => setIsFormOpen(true)}
-            className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center justify-center"
+            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary flex items-center justify-center"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Product
@@ -709,7 +833,7 @@ function Products() {
                         <MoreVertical className="h-5 w-5" />
                       </button>
                       {actionDropdownOpen === product._id && (
-                        <div className="fixed right-[24px] mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                        <div className="absolute right-[24px] mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                           <div
                             className="py-1"
                             role="menu"
@@ -751,261 +875,323 @@ function Products() {
 
       {/* Add Product Modal */}
       {isFormOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50 !mt-[0px]">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-medium text-gray-900">
-                {editingProduct ? "Edit Product" : "Add New Product"}
-              </h3>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+        isFetchingEdit ? (
+          <div className="fixed inset-0 flex items-center justify-center bg-gray-600 bg-opacity-50 z-50">
+            <div className="bg-white p-8 rounded shadow text-center">Loading product data...</div>
+          </div>
+        ) : (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50 !mt-[0px]">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {editingProduct ? "Edit Product" : "Add New Product"}
+                </h3>
+                <button
+                  onClick={handleCloseModal}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
 
-            <div className="px-6 py-4">
-              <div className="flex flex-col gap-[32px]">
-                {/* Product Title */}
-                <div className="">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Title
-                  </label>
-                  <input
-                    type="text"
-                    value={productTitle}
-                    onChange={(e) => setProductTitle(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
-                    placeholder="Enter product title"
-                  />
-                </div>
-
-                {/* Product Image */}
-                <div className="">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Image
-                  </label>
-                  <div className="flex items-center space-x-4">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                    {/* Show existing image when editing */}
-                    {editingProduct && productImageFilename && !productImageFile && (
-                      <div className="flex items-center space-x-2">
-                        <img
-                          src={`https://cms-be.yogendersingh.tech/public/products/${productImageFilename}`}
-                          alt="Current Product Image"
-                          className="h-16 w-16 rounded object-cover border"
-                        />
-                        <span className="text-xs text-gray-500">Current Image</span>
-                      </div>
-                    )}
-                    {/* Show preview of newly uploaded file */}
-                    {productImageFile && (
-                      <div className="flex items-center space-x-2">
-                        <img
-                          src={URL.createObjectURL(productImageFile)}
-                          alt="New Image Preview"
-                          className="h-16 w-16 rounded object-cover border"
-                        />
-                        <span className="text-xs text-gray-500">New Image</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Description Textarea */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
-                    placeholder="Enter description (optional)"
-                    rows={3}
-                  />
-                </div>
-
-                {/* Notes Textarea */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Notes
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
-                    placeholder="Enter notes (optional)"
-                    rows={3}
-                  />
-                </div>
-
-                {/* Category Select */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
-                  <Select
-                    isMulti
-                    options={categoryOptions}
-                    value={categoryOptions.filter(o => selectedCategories.includes(o.value))}
-                    onChange={(options) =>
-                      setSelectedCategories(options ? options.map(o => o.value) : [])
-                    }
-                    isLoading={isCategoriesLoading}
-                    placeholder="Select product categories"
-                  />
-                </div>
-
-                {/* Product Model */}
-                <div className="flex gap-4">
-                  <div className="flex-1">
+              <div className="px-6 py-4">
+                <div className="flex flex-col gap-[32px]">
+                  {/* Product Title (input field) */}
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Model
-                    </label>
-                    <Select
-                      options={modelOptions}
-                      value={modelOptions.find(o => o.value === productModel) || null}
-                      onChange={(option) =>
-                        setProductModel(option ? option.value : "")
-                      }
-                      isLoading={isLoadingModels}
-                      placeholder="Select product model"
-                      isClearable
-                    />
-                  </div>
-                </div>
-
-                {/* Product Features */}
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Features (comma-separated)
+                      Product Title
                     </label>
                     <input
                       type="text"
-                      value={productFeatures.join(", ")}
-                      onChange={(e) =>
-                        setProductFeatures(
-                          e.target.value.split(",").map((f) => f.trim())
-                        )
-                      }
+                      value={productTitle}
+                      onChange={e => setProductTitle(e.target.value)}
                       className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
-                      placeholder="Enter features, e.g., Feature1, Feature2"
+                      placeholder="Enter product title"
                     />
                   </div>
-                </div>
+                  {/* Category (multi-select) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Category
+                    </label>
+                    <Select
+                      isMulti
+                      options={categoryOptions}
+                      value={categoryOptions.filter(o => selectedCategories.includes(o.value))}
+                      onChange={(options) =>
+                        setSelectedCategories(options ? options.map(o => o.value) : [])
+                      }
+                      isLoading={isCategoriesLoading}
+                      placeholder="Select product categories"
+                    />
+                  </div>
 
-                {/* Product Warranty */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Warranty
-                  </label>
-                  <input
-                    type="text"
-                    value={productWarranty}
-                    onChange={(e) => setProductWarranty(e.target.value)}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
-                    placeholder="e.g., 1 year, 6 months"
-                  />
-                </div>
-
-                {/* Product Price */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Product Price
-                  </label>
-                  <div className="relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="text-gray-500 sm:text-sm">₹</span>
-                    </div>
+                  {/* Product Model (input field) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Model
+                    </label>
                     <input
-                      type="number"
-                      value={productPrice}
-                      onChange={(e) => setProductPrice(e.target.value)}
-                      className="w-full pl-7 pr-12 rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="0.00"
+                      type="text"
+                      value={productModel}
+                      onChange={e => setProductModel(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
+                      placeholder="Enter product model"
                     />
                   </div>
-                </div>
 
-                {/* Quality */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Quality</label>
-                  <input
-                    type="text"
-                    value={quality}
-                    onChange={e => setQuality(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
-                    placeholder="e.g. Premium Grade"
-                  />
-                </div>
+                  {/* Make (input field) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Make
+                    </label>
+                    <input
+                      type="text"
+                      value={make || ''}
+                      onChange={e => setMake(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
+                      placeholder="Enter make"
+                    />
+                  </div>
 
-                {/* Specification */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Specification</label>
-                  <textarea
-                    value={specification}
-                    onChange={e => setSpecification(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
-                    placeholder="e.g. Input: 230V AC, Output: 230V AC, Power: 10KVA"
-                    rows={2}
-                  />
-                </div>
+                  {/* Product Image (file upload) */}
+                  <div className="">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Image
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      />
+                      {/* Show existing image when editing */}
+                      {editingProduct && productImageFilename && !productImageFile && (
+                        <div className="flex items-center space-x-2">
+                          <img
+                            src={`https://cms-be.yogendersingh.tech/public/products/${productImageFilename}`}
+                            alt="Current Product Image"
+                            className="h-16 w-16 rounded object-cover border"
+                          />
+                          <span className="text-xs text-gray-500">Current Image</span>
+                        </div>
+                      )}
+                      {/* Show preview of newly uploaded file */}
+                      {productImageFile && (
+                        <div className="flex items-center space-x-2">
+                          <img
+                            src={URL.createObjectURL(productImageFile)}
+                            alt="New Image Preview"
+                            className="h-16 w-16 rounded object-cover border"
+                          />
+                          <span className="text-xs text-gray-500">New Image</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                {/* Terms and Condition */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">Terms and Condition</label>
-                  <textarea
-                    value={termsAndCondition}
-                    onChange={e => setTermsAndCondition(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
-                    placeholder="e.g. Standard warranty terms apply. Installation not included."
-                    rows={2}
-                  />
+                  {/* Description (textarea) */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
+                      placeholder="Enter description (optional)"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Features (comma-separated input) */}
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Features (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={productFeatures.join(", ")}
+                        onChange={(e) =>
+                          setProductFeatures(
+                            e.target.value.split(",").map((f) => f.trim())
+                          )
+                        }
+                        className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
+                        placeholder="Enter features, e.g., Feature1, Feature2"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Specification (textarea) */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Specification</label>
+                    <textarea
+                      value={specification}
+                      onChange={e => setSpecification(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
+                      placeholder="e.g. Input: 230V AC, Output: 230V AC, Power: 10KVA"
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Notes (textarea) */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notes
+                    </label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
+                      placeholder="Enter notes (optional)"
+                      rows={3}
+                    />
+                  </div>
+
+                  {/* Terms and Conditions (textarea) */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Terms and Conditions</label>
+                    <textarea
+                      value={termsAndCondition}
+                      onChange={e => setTermsAndCondition(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
+                      placeholder="e.g. Standard warranty terms apply. Installation not included."
+                      rows={2}
+                    />
+                  </div>
+
+                  {/* Product Price (number input) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Price
+                    </label>
+                    <div className="relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 sm:text-sm">₹</span>
+                      </div>
+                      <input
+                        type="number"
+                        value={productPrice}
+                        onChange={(e) => setProductPrice(e.target.value)}
+                        className="w-full pl-7 pr-12 rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Warranty (input) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Product Warranty
+                    </label>
+                    <input
+                      type="text"
+                      value={productWarranty}
+                      onChange={(e) => setProductWarranty(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3"
+                      placeholder="e.g., 1 year, 6 months"
+                    />
+                  </div>
+
+                  {/* Quality (select) */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Quality</label>
+                    <select
+                      value={quality}
+                      onChange={e => setQuality(e.target.value)}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 sm:text-sm"
+                    >
+                      <option value="">Select quality</option>
+                      <option value="economy">Economy</option>
+                      <option value="standard">Standard</option>
+                      <option value="premium">Premium</option>
+                      <option value="super premium">Super Premium</option>
+                    </select>
+                  </div>
+
+                  {/* Upload Data Sheet (file upload) */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Upload Data Sheet</label>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        id="datasheet-input"
+                        type="file"
+                        accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={handleDataSheetChange}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      />
+                      {dataSheetFile && (
+                        <span className="text-xs text-gray-500 mt-1 block">{dataSheetFile.name}</span>
+                      )}
+                      {!dataSheetFile && <span className="text-xs text-gray-500 mt-1 block">No file chosen</span>}
+                      {dataSheetFilename && (
+                        <button type="button" onClick={handleRemoveDataSheet} className="ml-2 text-red-500 text-xs">Remove</button>
+                      )}
+                      {dataSheetUploading && <span className="text-blue-600 text-xs ml-2">Uploading...</span>}
+                    </div>
+                  </div>
+
+                  {/* Upload Catalog (file upload) */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700">Upload Catalog</label>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        id="catalog-input"
+                        type="file"
+                        accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onChange={handleCatalogChange}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                      />
+                      {catalogFile && (
+                        <span className="text-xs text-gray-500 mt-1 block">{catalogFile.name}</span>
+                      )}
+                      {!catalogFile && <span className="text-xs text-gray-500 mt-1 block">No file chosen</span>}
+                      {catalogFilename && (
+                        <button type="button" onClick={handleRemoveCatalog} className="ml-2 text-red-500 text-xs">Remove</button>
+                      )}
+                      {catalogUploading && <span className="text-blue-600 text-xs ml-2">Uploading...</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* cancel and add button  */}
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={handleCloseModal}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={
-                  editingProduct ? handleUpdateProduct : handleAddProduct
-                }
-                disabled={isCreatingProduct || uploadImageMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCreatingProduct || uploadImageMutation.isPending ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                    {uploadImageMutation.isPending
-                      ? "Uploading Image..."
-                      : editingProduct
-                      ? "Updating..."
-                      : "Creating..."}
-                  </div>
-                ) : editingProduct ? (
-                  "Update Product"
-                ) : (
-                  "Add Product"
-                )}
-              </button>
+              {/* cancel and add button  */}
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                <button
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={
+                    editingProduct ? handleUpdateProduct : handleAddProduct
+                  }
+                  disabled={isCreatingProduct || uploadImageMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingProduct || uploadImageMutation.isPending ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      {uploadImageMutation.isPending
+                        ? "Uploading Image..."
+                        : editingProduct
+                        ? "Updating..."
+                        : "Creating..."}
+                    </div>
+                  ) : editingProduct ? (
+                    "Update Product"
+                  ) : (
+                    "Add Product"
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Delete Confirmation Modal */}

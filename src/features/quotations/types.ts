@@ -80,6 +80,8 @@ export type QuotationsFilters = {
   toMonth?: string;
   status?: QuotationStatus;
   converted?: string;
+  client?: string;
+  companyName?: string;
 };
 
 export type DashboardStats = {

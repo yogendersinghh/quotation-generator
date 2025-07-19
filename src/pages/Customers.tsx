@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuthContext } from "../features/auth/context/AuthContext";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
@@ -23,8 +23,11 @@ import { useClients } from "../features/clients/hooks/useClients";
 import { Client } from "../features/clients/types";
 import { ClientForm } from "../features/clients/components/ClientForm"; // Import the new reusable form component
 import { useDeleteClient } from "../features/clients/hooks/useDeleteClient"; // Import the new delete hook
-import { ConfirmDeleteCustomerModal } from '../components/ConfirmDeleteCustomerModal';
+import { ConfirmDeleteCustomerModal } from "../components/ConfirmDeleteCustomerModal";
 import toast from "react-hot-toast";
+import { clientsApi } from "../features/clients/api";
+import { EditCustomerForm } from "../features/clients/components/EditCustomerForm";
+import { CreateClientForm } from '../features/clients/components/CreateClientForm';
 
 function Customers() {
   const { isInitialized } = useAuthContext();
@@ -34,45 +37,53 @@ function Customers() {
 
   // Initialize state from URL parameters
   const [page, setPage] = useState(() => {
-    const pageParam = searchParams.get('page');
+    const pageParam = searchParams.get("page");
     return pageParam ? parseInt(pageParam, 10) : 1;
   });
   const [sortBy, setSortBy] = useState(() => {
-    return searchParams.get('sortBy') || 'name';
+    return searchParams.get("sortBy") || "name";
   });
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
-    return (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(() => {
+    return (searchParams.get("sortOrder") as "asc" | "desc") || "desc";
   });
   const [searchQuery, setSearchQuery] = useState(() => {
-    return searchParams.get('search') || '';
+    return searchParams.get("search") || "";
   });
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(() => {
-    return searchParams.get('search') || '';
+    return searchParams.get("search") || "";
   });
 
   // State for customer form
   const [isFormOpen, setIsFormOpen] = useState(false); // This will be used to control the form for editing/adding
-  const [editingCustomer, setEditingCustomer] = useState<Client | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
+  const [editingCompany, setEditingCompany] = useState<any>(null);
+  const [isFetchingEdit, setIsFetchingEdit] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Client | null>(null);
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(
     null
   );
+  const [companyNames, setCompanyNames] = useState<string[]>([]);
+  const [companyNameFilter, setCompanyNameFilter] = useState<string>("");
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
   // Function to update URL parameters
-  const updateURLParams = useCallback((updates: Record<string, string | number>) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === '' || value === null || value === undefined) {
-        newSearchParams.delete(key);
-      } else {
-        newSearchParams.set(key, String(value));
-      }
-    });
-    
-    setSearchParams(newSearchParams);
-  }, [searchParams, setSearchParams]);
+  const updateURLParams = useCallback(
+    (updates: Record<string, string | number>) => {
+      const newSearchParams = new URLSearchParams(searchParams);
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === "" || value === null || value === undefined) {
+          newSearchParams.delete(key);
+        } else {
+          newSearchParams.set(key, String(value));
+        }
+      });
+
+      setSearchParams(newSearchParams);
+    },
+    [searchParams, setSearchParams]
+  );
 
   // Update URL when state changes
   React.useEffect(() => {
@@ -86,10 +97,10 @@ function Customers() {
 
   // Sync state with URL parameters on mount
   React.useEffect(() => {
-    const pageParam = searchParams.get('page');
-    const sortByParam = searchParams.get('sortBy');
-    const sortOrderParam = searchParams.get('sortOrder');
-    const searchParam = searchParams.get('search');
+    const pageParam = searchParams.get("page");
+    const sortByParam = searchParams.get("sortBy");
+    const sortOrderParam = searchParams.get("sortOrder");
+    const searchParam = searchParams.get("search");
 
     if (pageParam && parseInt(pageParam, 10) !== page) {
       setPage(parseInt(pageParam, 10));
@@ -98,7 +109,7 @@ function Customers() {
       setSortBy(sortByParam);
     }
     if (sortOrderParam && sortOrderParam !== sortOrder) {
-      setSortOrder(sortOrderParam as 'asc' | 'desc');
+      setSortOrder(sortOrderParam as "asc" | "desc");
     }
     if (searchParam !== null && searchParam !== searchQuery) {
       setSearchQuery(searchParam);
@@ -115,28 +126,45 @@ function Customers() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Fetch company names on mount
+  useEffect(() => {
+    async function fetchCompanyNames() {
+      try {
+        const token = localStorage.getItem("token");
+        const names = await clientsApi.getCompanyNames(
+          token ? token : undefined
+        );
+        setCompanyNames(names);
+      } catch (err) {
+        setCompanyNames([]);
+      }
+    }
+    fetchCompanyNames();
+  }, []);
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.dropdown-container')) {
+      if (!target.closest(".dropdown-container")) {
         setActionDropdownOpen(null);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  // Fetch clients using the hook with search and sorting
+  // Fetch clients using the hook with search, sorting, and company filter
   const { data, isLoading, error } = useClients({
     page,
     limit: 10,
     sortBy,
     sortOrder,
     search: debouncedSearchQuery,
+    ...(companyNameFilter ? { companyName: companyNameFilter } : {}),
   });
 
   // Use delete client hook
@@ -152,10 +180,37 @@ function Customers() {
     setIsFormOpen(true);
   }, []);
 
-  const handleEditCustomer = useCallback((customer: Client) => {
-    setEditingCustomer(customer);
-    setActionDropdownOpen(null);
+  const handleEditCustomer = useCallback(async (customer: any) => {
+    setIsFetchingEdit(true);
     setIsFormOpen(true);
+    try {
+      const token = localStorage.getItem("token");
+      const data = await clientsApi.getClientById(
+        customer._id,
+        token ? token : undefined
+      );
+      // Find the specific customer/contact to edit
+      const contact =
+        data.customers && Array.isArray(data.customers)
+          ? data.customers.find((c: any) => c._id === customer._id) || data
+          : data;
+      setEditingCustomer(contact);
+      setEditingCompany({
+        companyName: data.companyName,
+        address: data.address,
+        place: data.place,
+        city: data.city,
+        state: data.state,
+        PIN: data.PIN,
+      });
+    } catch (err) {
+      setEditingCustomer(null);
+      setEditingCompany(null);
+      alert("Failed to fetch customer details.");
+    } finally {
+      setIsFetchingEdit(false);
+      setActionDropdownOpen(null);
+    }
   }, []);
 
   const handleUpdateCustomer = useCallback(() => {
@@ -179,42 +234,58 @@ function Customers() {
           setCustomerToDelete(null);
         },
         onError: (err: any) => {
-          console.error('Error deleting client:', err);
-          toast.error(err.response?.data?.message || 'Failed to delete customer.');
+          console.error("Error deleting client:", err);
+          toast.error(
+            err.response?.data?.message || "Failed to delete customer."
+          );
         },
       });
     }
   }, [customerToDelete, deleteClient]);
 
-  const handleActionClick = useCallback((customerId: string) => {
-    setActionDropdownOpen(actionDropdownOpen === customerId ? null : customerId);
-  }, [actionDropdownOpen]);
+  const handleActionClick = useCallback(
+    (customerId: string) => {
+      setActionDropdownOpen(
+        actionDropdownOpen === customerId ? null : customerId
+      );
+    },
+    [actionDropdownOpen]
+  );
 
   const handleCloseModal = useCallback(() => {
     setIsFormOpen(false);
     setEditingCustomer(null);
   }, []);
 
-  const handleSort = useCallback((field: string) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-  }, [sortBy, sortOrder]);
+  const handleSort = useCallback(
+    (field: string) => {
+      if (sortBy === field) {
+        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+      } else {
+        setSortBy(field);
+        setSortOrder("asc");
+      }
+    },
+    [sortBy, sortOrder]
+  );
 
-  const SortIcon = useCallback(({ field }: { field: string }) => {
-    if (sortBy !== field) return null;
-    return sortOrder === 'asc' ? '↑' : '↓';
-  }, [sortBy, sortOrder]);
+  const SortIcon = useCallback(
+    ({ field }: { field: string }) => {
+      if (sortBy !== field) return null;
+      return sortOrder === "asc" ? "↑" : "↓";
+    },
+    [sortBy, sortOrder]
+  );
 
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+    },
+    []
+  );
 
   const handleClearSearch = useCallback(() => {
-    setSearchQuery('');
+    setSearchQuery("");
   }, []);
 
   if (isLoading) {
@@ -238,19 +309,23 @@ function Customers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Customers</h1>
-        <button 
-          onClick={handleAddCustomer}
-          className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-md hover:bg-indigo-700 w-full sm:w-auto mt-2 sm:mt-0 flex items-center gap-2"
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
+        <button
+          className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow transition-colors"
+          onClick={() => setShowAddCustomerModal(true)}
         >
-          <Plus className="w-4 h-4" />
           Add Customer
         </button>
       </div>
+      {showAddCustomerModal && (
+        <CreateClientForm onClose={() => setShowAddCustomerModal(false)} />
+      )}
 
+      {/* Company Name Filter */}
       {/* Search Filter */}
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white p-6 rounded-lg shadow flex gap-6">
+        <div className="flex-1">
         <SearchBar
           placeholder={
             clients.length === 0
@@ -264,9 +339,26 @@ function Customers() {
         />
         {debouncedSearchQuery && clients.length > 0 && (
           <div className="mt-2 text-sm text-gray-600">
-            Showing results for: <span className="font-medium">"{debouncedSearchQuery}"</span>
+            Showing results for:{" "}
+            <span className="font-medium">"{debouncedSearchQuery}"</span>
           </div>
         )}
+        </div>
+        
+
+        <select
+          id="companyNameFilter"
+          value={companyNameFilter}
+          onChange={(e) => setCompanyNameFilter(e.target.value)}
+          className="w-[240px] border border-gray-300 rounded px-3 py-2 text-sm"
+        >
+          <option value="">All Companies</option>
+          {companyNames.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Conditional rendering for customer table or no results message in the content area */}
@@ -276,9 +368,13 @@ function Customers() {
           <div className="flex items-center justify-center">
             <div className="text-center bg-white p-8 rounded-lg shadow-md w-full">
               <UsersIcon className="w-24 h-24 text-indigo-500 mx-auto mb-6 bg-indigo-50 p-4 rounded-full" />
-              <h2 className="text-2xl font-bold mb-3 text-gray-800">No Customers Added Yet</h2>
+              <h2 className="text-2xl font-bold mb-3 text-gray-800">
+                No Customers Added Yet
+              </h2>
               <p className="text-gray-600 mb-6">
-                Start building your customer database by adding your first customer.<br />
+                Start building your customer database by adding your first
+                customer.
+                <br />
                 You can include their contact information and details.
               </p>
               <button
@@ -294,9 +390,12 @@ function Customers() {
           <div className="flex items-center justify-center">
             <div className="text-center bg-white p-8 rounded-lg shadow-md w-full">
               <Search className="w-24 h-24 text-gray-400 mx-auto mb-6 bg-gray-50 p-4 rounded-full" />
-              <h2 className="text-2xl font-bold mb-2 text-gray-800">No Customers Found</h2>
+              <h2 className="text-2xl font-bold mb-2 text-gray-800">
+                No Customers Found
+              </h2>
               <p className="text-gray-600 mb-6">
-                No customers found matching "{debouncedSearchQuery}". Try a different search term or clear the search.
+                No customers found matching "{debouncedSearchQuery}". Try a
+                different search term or clear the search.
               </p>
               <button
                 onClick={handleClearSearch}
@@ -315,13 +414,30 @@ function Customers() {
             <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Name</th>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Email</th>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Position</th>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Created By</th>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Address</th>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Phone Number</th>
-                  <th className="px-2 sm:px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Name
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Company Name
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Email
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Position
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Created By
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Address
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Phone Number
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -331,7 +447,13 @@ function Customers() {
                       {client.name}
                     </td>
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(Array.isArray(client.email) ? client.email : String(client.email).split(/[\,\s]+/)).map((email, idx) => (
+                      {client.companyName || "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(Array.isArray(client.email)
+                        ? client.email
+                        : String(client.email).split(/[\,\s]+/)
+                      ).map((email, idx) => (
                         <div key={idx}>{email}</div>
                       ))}
                     </td>
@@ -339,12 +461,17 @@ function Customers() {
                       {client.position}
                     </td>
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {client.createdBy ? client.createdBy.name : 'N/A'}
+                      {client.createdBy ? client.createdBy.name : "N/A"}
                     </td>
-                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500" dangerouslySetInnerHTML={{ __html: client.address }}>
-                    </td>
+                    <td
+                      className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                      dangerouslySetInnerHTML={{ __html: client.address }}
+                    ></td>
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(Array.isArray(client.phone) ? client.phone : String(client.phone).split(/[\,\s]+/)).map((phone, idx) => (
+                      {(Array.isArray(client.phone)
+                        ? client.phone
+                        : String(client.phone).split(/[\,\s]+/)
+                      ).map((phone, idx) => (
                         <div key={idx}>{phone}</div>
                       ))}
                     </td>
@@ -357,9 +484,9 @@ function Customers() {
                         >
                           <MoreVertical className="h-5 w-5" />
                         </button>
-                        
+
                         {actionDropdownOpen === client._id && (
-                          <div className="fixed right-[24px] w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 ring-1 ring-black ring-opacity-5">
+                          <div className="absolute right-[24px] w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 ring-1 ring-black ring-opacity-5">
                             <div className="py-1">
                               <button
                                 onClick={() => handleEditCustomer(client)}
@@ -391,7 +518,7 @@ function Customers() {
           {pagination && pagination.pages > 1 && (
             <div className="flex justify-center mt-6 space-x-2">
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
                 className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -401,7 +528,9 @@ function Customers() {
                 Page {page} of {pagination.pages}
               </span>
               <button
-                onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+                onClick={() =>
+                  setPage((p) => Math.min(pagination.pages, p + 1))
+                }
                 disabled={page === pagination.pages}
                 className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -415,7 +544,8 @@ function Customers() {
             <div className="mt-4 text-center text-sm text-gray-600">
               {debouncedSearchQuery ? (
                 <span>
-                  Showing {clients.length} of {pagination.total} results for "{debouncedSearchQuery}"
+                  Showing {clients.length} of {pagination.total} results for "
+                  {debouncedSearchQuery}"
                 </span>
               ) : (
                 <span>
@@ -428,9 +558,22 @@ function Customers() {
       )}
 
       {/* Customer Form Modal */}
-      {isFormOpen && (
-        <ClientForm onClose={handleCloseModal} initialData={editingCustomer} />
-      )}
+      {isFormOpen &&
+        (isFetchingEdit ? (
+          <div className="fixed inset-0 flex items-center justify-center bg-gray-600 bg-opacity-50 z-50">
+            <div className="bg-white p-8 rounded shadow text-center">
+              Loading customer data...
+            </div>
+          </div>
+        ) : (
+          editingCustomer && (
+            <EditCustomerForm
+              initialData={editingCustomer}
+              companyData={editingCompany}
+              onClose={handleCloseModal}
+            />
+          )
+        ))}
 
       {/* Delete Confirmation Modal */}
       {customerToDelete && (

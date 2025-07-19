@@ -1,119 +1,154 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { X, User, Mail, Briefcase, MapPin, Phone, Plus, Trash2, Building } from 'lucide-react';
-import { useCreateClient } from '../hooks/useCreateClient';
-import { CreateClientPayload } from '../types';
+import { clientsApi, CreateCompanyWithUsersPayload } from '../api';
+import { useQueryClient } from '@tanstack/react-query';
 
-// Define the validation schema for the client creation form
-const createClientSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  position: z.string().min(1, 'Position is required'),
-  address: z.string().min(1, 'Address is required'),
-  place: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  PIN: z.string().optional(),
-  companyName: z.string().optional(),
+// Types for the new form structure
+interface CustomerContact {
+  name: string;
+  position: string;
+  email: string[];
+  phone: string[];
+}
+
+interface CompanyFormState {
+  companyName: string;
+  address: string;
+  place: string;
+  city: string;
+  state: string;
+  PIN: string;
+  customers: CustomerContact[];
+}
+
+const emptyCustomer = (): CustomerContact => ({
+  name: '',
+  position: '',
+  email: [''],
+  phone: [''],
 });
 
-type CreateClientFormData = z.infer<typeof createClientSchema>;
-
-type CreateClientFormProps = {
-  onClose: () => void;
-};
-
-export const CreateClientForm = ({ onClose }: CreateClientFormProps) => {
-  const { mutate: createClient, isPending } = useCreateClient();
-  const [emails, setEmails] = useState<string[]>(['']);
-  const [phones, setPhones] = useState<string[]>(['']);
-
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<CreateClientFormData>({
-    resolver: zodResolver(createClientSchema),
+export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
+  const [form, setForm] = useState<CompanyFormState>({
+    companyName: '',
+    address: '',
+    place: '',
+    city: '',
+    state: '',
+    PIN: '',
+    customers: [emptyCustomer()],
   });
+  const queryClient = useQueryClient();
 
-  const addEmail = () => {
-    setEmails([...emails, '']);
+  // Company field handler
+  const handleCompanyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const removeEmail = (index: number) => {
-    if (emails.length > 1) {
-      setEmails(emails.filter((_, i) => i !== index));
-    }
+  // Customer field handlers
+  const handleCustomerChange = (idx: number, field: keyof CustomerContact, value: string) => {
+    const updated = [...form.customers];
+    updated[idx] = { ...updated[idx], [field]: value };
+    setForm({ ...form, customers: updated });
   };
 
-  const updateEmail = (index: number, value: string) => {
-    const newEmails = [...emails];
-    newEmails[index] = value;
-    setEmails(newEmails);
+  // Email/Phone handlers
+  const handleCustomerArrayChange = (
+    idx: number,
+    field: 'email' | 'phone',
+    arrIdx: number,
+    value: string
+  ) => {
+    const updated = [...form.customers];
+    const arr = [...updated[idx][field]];
+    arr[arrIdx] = value;
+    updated[idx][field] = arr;
+    setForm({ ...form, customers: updated });
   };
 
-  const addPhone = () => {
-    setPhones([...phones, '']);
+  const addCustomer = () => {
+    setForm({ ...form, customers: [...form.customers, emptyCustomer()] });
   };
 
-  const removePhone = (index: number) => {
-    if (phones.length > 1) {
-      setPhones(phones.filter((_, i) => i !== index));
-    }
+  const removeCustomer = (idx: number) => {
+    if (form.customers.length === 1) return;
+    setForm({ ...form, customers: form.customers.filter((_, i) => i !== idx) });
   };
 
-  const updatePhone = (index: number, value: string) => {
-    const newPhones = [...phones];
-    newPhones[index] = value;
-    setPhones(newPhones);
+  const addEmailOrPhone = (idx: number, field: 'email' | 'phone') => {
+    const updated = [...form.customers];
+    updated[idx][field] = [...updated[idx][field], ''];
+    setForm({ ...form, customers: updated });
   };
 
-  const validateEmails = (emails: string[]): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emails.every(email => email === '' || emailRegex.test(email));
+  const removeEmailOrPhone = (idx: number, field: 'email' | 'phone', arrIdx: number) => {
+    const updated = [...form.customers];
+    if (updated[idx][field].length === 1) return;
+    updated[idx][field] = updated[idx][field].filter((_, i) => i !== arrIdx);
+    setForm({ ...form, customers: updated });
   };
 
-  const validatePhones = (phones: string[]): boolean => {
-    const phoneRegex = /^\+?[0-9\s\-()]{10,}$/;
-    return phones.every(phone => phone === '' || phoneRegex.test(phone));
-  };
+  // Validation helpers
+  const validateEmail = (email: string) => /^[^\s@]+@[^-\s@]+\.[^\s@]+$/.test(email);
+  const validatePhone = (phone: string) => /^\+?[0-9\s\-()]{10,}$/.test(phone);
 
-  const onSubmit = async (data: CreateClientFormData) => {
-    // Filter out empty emails and phones
-    const validEmails = emails.filter(email => email.trim() !== '');
-    const validPhones = phones.filter(phone => phone.trim() !== '');
-
-    if (validEmails.length === 0) {
-      alert('At least one email is required');
+  // Only use the new API for submission
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Basic validation
+    if (!form.companyName || !form.address || !form.city || !form.state || !form.PIN) {
+      alert('Please fill all company fields.');
       return;
     }
-
-    if (validPhones.length === 0) {
-      alert('At least one phone number is required');
-      return;
+    for (const c of form.customers) {
+      if (!c.name || !c.position) {
+        alert('Please fill all customer name and position fields.');
+        return;
+      }
+      if (c.email.length === 0 || c.email.some((em) => !em.trim() || !validateEmail(em))) {
+        alert('Please provide valid email(s) for all customers.');
+        return;
+      }
+      if (c.phone.length === 0 || c.phone.some((ph) => !ph.trim() || !validatePhone(ph))) {
+        alert('Please provide valid phone(s) for all customers.');
+        return;
+      }
     }
-
-    if (!validateEmails(validEmails)) {
-      alert('Please enter valid email addresses');
-      return;
-    }
-
-    if (!validatePhones(validPhones)) {
-      alert('Please enter valid phone numbers');
-      return;
-    }
-
-    const payload: CreateClientPayload = {
-      ...data,
-      email: validEmails,
-      phone: validPhones,
+    // Prepare payload for new API
+    const payload: CreateCompanyWithUsersPayload = {
+      companyName: form.companyName,
+      address: form.address,
+      place: form.place,
+      city: form.city,
+      state: form.state,
+      PIN: form.PIN,
+      users: form.customers.map((c) => ({
+        name: c.name,
+        email: c.email,
+        position: c.position,
+        phone: c.phone,
+      })),
     };
-
-    createClient(payload, {
-      onSuccess: () => {
-        reset();
-        setEmails(['']);
-        setPhones(['']);
-        onClose();
-      },
-    });
+    // Debug log
+    console.log('Payload being sent:', payload);
+    // Get token (replace with your actual token logic)
+    const token = localStorage.getItem('token');
+    try {
+      await clientsApi.createCompanyWithUsers(payload, token ? token : undefined);
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      setForm({
+        companyName: '',
+        address: '',
+        place: '',
+        city: '',
+        state: '',
+        PIN: '',
+        customers: [emptyCustomer()],
+      });
+      onClose();
+    } catch (error: any) {
+      alert('Failed to create company with users: ' + (error?.response?.data?.message || error.message));
+    }
   };
 
   return (
@@ -125,215 +160,219 @@ export const CreateClientForm = ({ onClose }: CreateClientFormProps) => {
             <X size={24} />
           </button>
         </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Basic Information */}
+        <form onSubmit={onSubmit} className="space-y-6">
+          {/* Company Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">Name *</label>
+              <label className="block text-sm font-medium text-gray-700">Company Nameee *</label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
+                  <Building className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   type="text"
-                  id="name"
-                  {...register('name')}
+                  name="companyName"
+                  value={form.companyName}
+                  onChange={handleCompanyChange}
                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                  placeholder="John Doe"
+                  placeholder="ABC Company"
+                  required
                 />
               </div>
-              {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
             </div>
-
             <div>
-              <label htmlFor="position" className="block text-sm font-medium text-gray-700">Position *</label>
+              <label className="block text-sm font-medium text-gray-700">Address *</label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Briefcase className="h-5 w-5 text-gray-400" />
+                  <MapPin className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   type="text"
-                  id="position"
-                  {...register('position')}
+                  name="address"
+                  value={form.address}
+                  onChange={handleCompanyChange}
                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                  placeholder="Manager"
+                  placeholder="123 Main St"
+                  required
                 />
               </div>
-              {errors.position && <p className="mt-1 text-sm text-red-600">{errors.position.message}</p>}
             </div>
-          </div>
-
-          {/* Company Information */}
-          <div>
-            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name</label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Building className="h-5 w-5 text-gray-400" />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Place *</label>
               <input
                 type="text"
-                id="companyName"
-                {...register('companyName')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                placeholder="ABC Company"
+                name="place"
+                value={form.place}
+                onChange={handleCompanyChange}
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                placeholder="Area/Locality"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">City *</label>
+              <input
+                type="text"
+                name="city"
+                value={form.city}
+                onChange={handleCompanyChange}
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                placeholder="City"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">State *</label>
+              <input
+                type="text"
+                name="state"
+                value={form.state}
+                onChange={handleCompanyChange}
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                placeholder="State"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">PIN *</label>
+              <input
+                type="text"
+                name="PIN"
+                value={form.PIN}
+                onChange={handleCompanyChange}
+                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                placeholder="PIN Code"
+                required
               />
             </div>
           </div>
 
-          {/* Email Addresses */}
+          {/* Customers Section */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Addresses *</label>
-            {emails.map((email, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <div className="flex-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => updateEmail(index, e.target.value)}
-                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                    placeholder="john@company.com"
-                  />
-                </div>
-                {emails.length > 1 && (
+            <h3 className="text-lg font-semibold mb-2">Customer Contacts</h3>
+            {form.customers.map((customer, idx) => (
+              <div key={idx} className="border rounded-lg p-4 mb-4 relative bg-gray-50">
+                {form.customers.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => removeEmail(index)}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                    onClick={() => removeCustomer(idx)}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 size={18} />
                   </button>
                 )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name *</label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <User className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        value={customer.name}
+                        onChange={e => handleCustomerChange(idx, 'name', e.target.value)}
+                        className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                        placeholder="Contact Name"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Position *</label>
+                    <div className="mt-1 relative rounded-md shadow-sm">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Briefcase className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        value={customer.position}
+                        onChange={e => handleCustomerChange(idx, 'position', e.target.value)}
+                        className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                        placeholder="Position"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Emails */}
+                <div className="mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email(s) *</label>
+                  {customer.email.map((em, emIdx) => (
+                    <div key={emIdx} className="flex gap-2 mb-2">
+                      <div className="flex-1 relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Mail className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                          type="email"
+                          value={em}
+                          onChange={e => handleCustomerArrayChange(idx, 'email', emIdx, e.target.value)}
+                          className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                          placeholder="contact@company.com"
+                          required
+                        />
+                      </div>
+                      {customer.email.length > 1 && (
+                        <button type="button" onClick={() => removeEmailOrPhone(idx, 'email', emIdx)} className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>
+                      )}
+                      {emIdx === customer.email.length - 1 && (
+                        <button type="button" onClick={() => addEmailOrPhone(idx, 'email')} className="text-green-500 hover:text-green-700"><Plus size={18} /></button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {/* Phones */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone(s) *</label>
+                  {customer.phone.map((ph, phIdx) => (
+                    <div key={phIdx} className="flex gap-2 mb-2">
+                      <div className="flex-1 relative rounded-md shadow-sm">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <Phone className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={ph}
+                          onChange={e => handleCustomerArrayChange(idx, 'phone', phIdx, e.target.value)}
+                          className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                          placeholder="Phone Number"
+                          required
+                        />
+                      </div>
+                      {customer.phone.length > 1 && (
+                        <button type="button" onClick={() => removeEmailOrPhone(idx, 'phone', phIdx)} className="text-red-500 hover:text-red-700"><Trash2 size={18} /></button>
+                      )}
+                      {phIdx === customer.phone.length - 1 && (
+                        <button type="button" onClick={() => addEmailOrPhone(idx, 'phone')} className="text-green-500 hover:text-green-700"><Plus size={18} /></button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
             <button
               type="button"
-              onClick={addEmail}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              onClick={addCustomer}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Email
+              <Plus size={18} /> Add More Customer
             </button>
           </div>
 
-          {/* Phone Numbers */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Numbers *</label>
-            {phones.map((phone, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <div className="flex-1 relative rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => updatePhone(index, e.target.value)}
-                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                    placeholder="+919876543210"
-                  />
-                </div>
-                {phones.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removePhone(index)}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addPhone}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Phone
-            </button>
-          </div>
-
-          {/* Address Information */}
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address *</label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MapPin className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                id="address"
-                {...register('address')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                placeholder="123 Main Street"
-              />
-            </div>
-            {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="place" className="block text-sm font-medium text-gray-700">sector/place</label>
-              <input
-                type="text"
-                id="place"
-                {...register('place')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
-                placeholder="Downtown"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="city" className="block text-sm font-medium text-gray-700">City</label>
-              <input
-                type="text"
-                id="city"
-                {...register('city')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
-                placeholder="Mumbai"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="state" className="block text-sm font-medium text-gray-700">State</label>
-              <input
-                type="text"
-                id="state"
-                {...register('state')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
-                placeholder="Maharashtra"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="PIN" className="block text-sm font-medium text-gray-700">PIN Code</label>
-              <input
-                type="text"
-                id="PIN"
-                {...register('PIN')}
-                className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
-                placeholder="400001"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            <button
-              type="submit"
-              className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isPending}
-            >
-              {isPending ? 'Adding Customer...' : 'Add Customer'}
-            </button>
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
             >
               Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            >
+              Save
             </button>
           </div>
         </form>

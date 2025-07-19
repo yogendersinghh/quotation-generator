@@ -15,6 +15,7 @@ export interface Product {
   quality?: string;
   specification?: string;
   termsAndCondition?: string;
+  make?: string;
 }
 
 export interface Pagination {
