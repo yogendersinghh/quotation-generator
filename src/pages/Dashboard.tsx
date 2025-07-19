@@ -651,7 +651,12 @@ function Dashboard() {
                   <h3 className="text-sm font-medium text-gray-500">
                     Engaged Clients
                   </h3>
-                  <p className="text-2xl font-bold text-gray-900">12</p>
+                  
+                  <p className="text-2xl font-bold text-gray-900">
+                    {dashboardStatsLoading
+                      ? "..."
+                      : (dashboardStats.totalEngagedClients ?? 'N/A')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -683,7 +688,7 @@ function Dashboard() {
                   <h3 className="text-sm font-medium text-gray-500">
                     Under Discussion
                   </h3>
-                  <p className="text-2xl font-bold text-gray-900">7</p>
+                  <p className="text-2xl font-bold text-gray-900">{dashboardStatsLoading ? "..." : dashboardStats?.underDevelopment}</p>
                 </div>
               </div>
             </div>
@@ -920,10 +925,10 @@ function Dashboard() {
               selectedQuotationStatus ||
               selectedAdminStatus ||
               searchTerm) && (
-              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="mt-4 p-3 bg-primary-bg border border-primary-light rounded-md">
                 <div className="flex items-center">
-                  <Filter className="w-4 h-4 text-blue-600 mr-2" />
-                  <span className="text-sm text-blue-800">
+                  <Filter className="w-4 h-4 text-primary-dark mr-2" />
+                  <span className="text-sm text-primary-dark">
                     Filters applied:{" "}
                     {[
                       searchTerm && "Search",
@@ -935,7 +940,7 @@ function Dashboard() {
                       .join(", ")}
                   </span>
                 </div>
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="text-xs text-primary-dark">
                   Showing filtered results. Stats above show overall data for
                   this user.
                 </p>
@@ -951,12 +956,17 @@ function Dashboard() {
                   Quotations
                 </h3>
                 <div className="flex items-center gap-4">
-                  <button
+                  {/* <button
                     className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow transition-colors"
                     onClick={() => setShowAddCustomerModal(true)}
                   >
                     Add Customer
-                  </button>
+                  </button> */}
+                  <div className="text-sm text-gray-500">
+                    {quotationsLoading
+                      ? "Loading..."
+                      : `Showing ${quotations.length} of ${pagination?.total || 0} quotations`}
+                  </div>
                   <button
                     className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-md shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleExportExcel}
@@ -964,11 +974,6 @@ function Dashboard() {
                   >
                     {exporting ? 'Exporting...' : 'Export Excel'}
                   </button>
-                  <div className="text-sm text-gray-500">
-                    {quotationsLoading
-                      ? "Loading..."
-                      : `Showing ${quotations.length} of ${pagination?.total || 0} quotations`}
-                  </div>
                 </div>
               </div>
             </div>

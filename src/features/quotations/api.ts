@@ -119,6 +119,7 @@ export const quotationsApi = {
         underDevelopment: apiData.conversionStats.underDevelopment,
         booked: apiData.conversionStats.booked,
         lost: apiData.conversionStats.lost,
+        totalEngagedClients: apiData.totalEngagedClients ?? 0,
       };
       
       console.log('Processed dashboard stats:', stats);

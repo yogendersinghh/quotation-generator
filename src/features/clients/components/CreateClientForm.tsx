@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Mail, Briefcase, MapPin, Phone, Plus, Trash2, Building } from 'lucide-react';
 import { clientsApi, CreateCompanyWithUsersPayload } from '../api';
 import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 // Types for the new form structure
 interface CustomerContact {
@@ -97,20 +98,20 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
     e.preventDefault();
     // Basic validation
     if (!form.companyName || !form.address || !form.city || !form.state || !form.PIN) {
-      alert('Please fill all company fields.');
+      toast.error('Please fill all company fields.');
       return;
     }
     for (const c of form.customers) {
       if (!c.name || !c.position) {
-        alert('Please fill all customer name and position fields.');
+        toast.error('Please fill all customer name and position fields.');
         return;
       }
       if (c.email.length === 0 || c.email.some((em) => !em.trim() || !validateEmail(em))) {
-        alert('Please provide valid email(s) for all customers.');
+        toast.error('Please provide valid email(s) for all customers.');
         return;
       }
       if (c.phone.length === 0 || c.phone.some((ph) => !ph.trim() || !validatePhone(ph))) {
-        alert('Please provide valid phone(s) for all customers.');
+        toast.error('Please provide valid phone(s) for all customers.');
         return;
       }
     }
@@ -147,13 +148,15 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
       });
       onClose();
     } catch (error: any) {
-      alert('Failed to create company with users: ' + (error?.response?.data?.message || error.message));
+      // Prefer backend error, then message, then generic
+      const backendError = error?.response?.data?.error || error?.response?.data?.message || error.message;
+      toast.error('Failed to create company with users: ' + backendError);
     }
   };
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto !mt-[0px]">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-2xl mx-4 my-8">
+      <div className="bg-white h-[80%] overflow-scroll rounded-lg shadow-xl p-8 w-full max-w-2xl mx-4 my-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">Add New Customer</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -164,7 +167,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
           {/* Company Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Company Nameee *</label>
+              <label className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Building className="h-5 w-5 text-gray-400" />
@@ -181,7 +184,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Address *</label>
+              <label className="block text-sm font-medium text-gray-700">Address <span className="text-red-500">*</span></label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <MapPin className="h-5 w-5 text-gray-400" />
@@ -198,7 +201,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Place *</label>
+              <label className="block text-sm font-medium text-gray-700">Place <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="place"
@@ -210,7 +213,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">City *</label>
+              <label className="block text-sm font-medium text-gray-700">City <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="city"
@@ -222,7 +225,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">State *</label>
+              <label className="block text-sm font-medium text-gray-700">State <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="state"
@@ -234,7 +237,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">PIN *</label>
+              <label className="block text-sm font-medium text-gray-700">PIN <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="PIN"
@@ -263,7 +266,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Name *</label>
+                    <label className="block text-sm font-medium text-gray-700">Name <span className="text-red-500">*</span></label>
                     <div className="mt-1 relative rounded-md shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <User className="h-5 w-5 text-gray-400" />
@@ -279,7 +282,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Position *</label>
+                    <label className="block text-sm font-medium text-gray-700">Position <span className="text-red-500">*</span></label>
                     <div className="mt-1 relative rounded-md shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Briefcase className="h-5 w-5 text-gray-400" />
@@ -297,7 +300,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                 </div>
                 {/* Emails */}
                 <div className="mb-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email(s) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email(s) <span className="text-red-500">*</span></label>
                   {customer.email.map((em, emIdx) => (
                     <div key={emIdx} className="flex gap-2 mb-2">
                       <div className="flex-1 relative rounded-md shadow-sm">
@@ -324,7 +327,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                 </div>
                 {/* Phones */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone(s) *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone(s) <span className="text-red-500">*</span></label>
                   {customer.phone.map((ph, phIdx) => (
                     <div key={phIdx} className="flex gap-2 mb-2">
                       <div className="flex-1 relative rounded-md shadow-sm">

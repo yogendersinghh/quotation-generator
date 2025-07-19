@@ -187,7 +187,7 @@ function Categories() {
         <h1 className="text-2xl font-semibold text-gray-900">Categories</h1>
         <button
           onClick={handleAddCategory}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <Plus className="w-5 h-5 mr-2" />
           Add Category
@@ -370,7 +370,7 @@ function Categories() {
                 <button
                   type="submit"
                   disabled={createCategory.isPending || updateCategory.isPending || !categoryName.trim() || !categoryDescription.trim()}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {createCategory.isPending || updateCategory.isPending ? (
                     <>

@@ -207,6 +207,9 @@ function Products() {
   const [dataSheetUploading, setDataSheetUploading] = useState(false);
   const [catalogUploading, setCatalogUploading] = useState(false);
 
+  // Add state for GST
+  const [addGst, setAddGst] = useState(false);
+
   // Refetch categories when modal opens
   useEffect(() => {
     if (isFormOpen) {
@@ -227,6 +230,7 @@ function Products() {
       setProductPrice(product.price.toString());
       setProductWarranty(product.warranty);
       setProductImageFilename(product.productImage || "");
+      setAddGst(product.addGst || false); // Populate addGst
       
       if (Array.isArray(product.categories)) {
         setSelectedCategories(
@@ -437,12 +441,15 @@ function Products() {
       dataSheet: dataSheetFilename,
       catalog: catalogFilename,
       make: make.trim(),
+      addGst: addGst, // Include addGst in productData
     };
 
     try {
       await createProduct(productData);
       handleCloseModal();
-    } catch (error) {
+    } catch (error: any) {
+      const backendError = error?.response?.data?.error || error?.response?.data?.message || error.message;
+      toast.error(backendError);
       console.error("Failed to create product:", error);
     }
   };
@@ -461,6 +468,7 @@ function Products() {
       setProductPrice(data.price ? data.price.toString() : '');
       setProductWarranty(data.warranty || '');
       setProductImageFilename(data.productImage || '');
+      setAddGst(data.addGst || false); // Populate addGst
       setSelectedCategories(Array.isArray(data.categories) ? data.categories.map((cat: any) => (typeof cat === 'object' ? cat._id : cat)) : []);
       setNotes(data.notes || '');
       setDescription(data.description || '');
@@ -526,12 +534,15 @@ function Products() {
       dataSheet: dataSheetFilename,
       catalog: catalogFilename,
       make: make.trim(),
+      addGst: addGst, // Include addGst in productData
     };
 
     try {
       await updateProduct({ id: editingProduct._id, productData });
       handleCloseModal();
-    } catch (error) {
+    } catch (error: any) {
+      const backendError = error?.response?.data?.error || error?.response?.data?.message || error.message;
+      toast.error(backendError);
       console.error("Failed to update product:", error);
     }
   };
@@ -560,6 +571,7 @@ function Products() {
     setMake("");
     setDataSheetFile(null);
     setCatalogFile(null);
+    setAddGst(false); // Reset addGst on modal close
     refetchCategories();
   };
 
@@ -643,7 +655,7 @@ function Products() {
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           <button 
             onClick={() => navigate('/categories')}
-            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary flex items-center justify-center"
+            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary-dark flex items-center justify-center"
           >
             <FolderPlus className="w-4 h-4 mr-2" />
             Categories
@@ -657,7 +669,7 @@ function Products() {
           </button> */}
           <button 
             onClick={() => setIsFormOpen(true)}
-            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary flex items-center justify-center"
+            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary-dark flex items-center justify-center"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Product
@@ -667,7 +679,7 @@ function Products() {
 
       {/* Filters */}
       <div className="bg-white p-6 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-center">
           <div className="relative col-span-full md:col-span-1">
             <SearchBar
               placeholder={
@@ -683,7 +695,7 @@ function Products() {
           </div>
 
           {/* Model Filter */}
-          <div>
+          {/* <div>
             <Select
               options={modelOptions}
               value={modelOptions.find((o) => o.value === modelFilter) || null}
@@ -692,7 +704,7 @@ function Products() {
               placeholder="Filter by model"
               isClearable
             />
-          </div>
+          </div> */}
 
           {/* Category Filter */}
           <div>
@@ -717,7 +729,7 @@ function Products() {
                 setCategoryFilter([]);
               }}
               disabled={!hasActiveFilters}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400 disabled:cursor-not-allowed w-full justify-center"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-primary-light disabled:cursor-not-allowed w-full justify-center"
             >
               <FilterX className="w-4 h-4 mr-2" />
               Clear Filters
@@ -899,7 +911,7 @@ function Products() {
                   {/* Product Title (input field) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Title
+                      Product Title *
                     </label>
                     <input
                       type="text"
@@ -912,7 +924,7 @@ function Products() {
                   {/* Category (multi-select) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Category
+                      Category *
                     </label>
                     <Select
                       isMulti
@@ -929,7 +941,7 @@ function Products() {
                   {/* Product Model (input field) */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Model
+                      Product Model *
                     </label>
                     <input
                       type="text"

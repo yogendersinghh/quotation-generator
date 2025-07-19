@@ -91,4 +91,5 @@ export type DashboardStats = {
   underDevelopment: number;
   booked: number;
   lost: number;
+  totalEngagedClients?: number;
 };

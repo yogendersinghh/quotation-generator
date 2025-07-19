@@ -10,6 +10,7 @@ import { useClients } from "../features/clients/hooks/useClients";
 import { useProducts } from "../features/products/hooks/useProducts";
 import { tokenStorage } from "../features/auth/utils";
 import { apiClient } from "../lib/axios";
+import { useDefaultMessages } from '../features/defaultMessages/hooks/useDefaultMessages';
 
 // Types
 interface CustomerOption {
@@ -56,12 +57,7 @@ function CreateQuotation() {
   const [title, setTitle] = useState("");
   const [customer, setCustomer] = useState<CustomerOption | null>(null);
   const [subject, setSubject] = useState("");
-  const [formalMessage, setFormalMessage] =
-    useState(`<p><strong>1. Dear Sir,</strong></p>
-
-<p>With reference to your requirement for Air Cooling, we are pleased to submit our proposal for supply & installation of Symphony Industrial / Commercial Air Coolers.</p>
-
-<p>The quotation is for supply of Symphony Natural Air-Cooling solution which delivers continuous fresh, filtered & cool air. Based on your cooling requirement we have calculated the cooling solution as follows:</p>`);
+  const [formalMessage, setFormalMessage] = useState("");
   // Step 2 fields
   const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
@@ -76,31 +72,16 @@ function CreateQuotation() {
     total: "",
   });
   // Step 3 fields
-  const [notes, setNotes] =
-    useState(`<p>Recommended water supply should be less than 400 TDS. All electrical work under customer scope.</p>
-
-<p>Size of wire suitable to ampere rating of the motor which shall be selected by qualified Electrician of the customer.</p>
-
-<p>Use single phase preventer for all three phase machines, Spike buster for all machines & Voltage stabilizer where voltage fluctuates more than 5%.</p>
-
-<p>Any change in quantity shall be charged extra.</p>
-
-<p>Any kind of charges / scope of work which is not specified in above, will be extra as per actual.</p>`);
-  const [billing, setBilling] =
-    useState(`<p><strong>Material will be billed through</strong></p>
-
-<p><strong>M/s FIVE STAR TECHNOLOGIES</strong><br>
-C-165 , SECTOR-10 , NOIDA - 201301<br>
-GST : 09AACFF0291J1ZF</p>`);
+  const [notes, setNotes] = useState("");
+  const [billing, setBilling] = useState("");
   const [supply, setSupply] = useState("");
   const [ic, setIC] = useState("");
   // Step 4 fields
   const [tnc, setTnc] = useState("");
   // Step 5 fields
-  const [signature, setSignature] = useState<File | null>(null);
-  const [signatureUrl, setSignatureUrl] = useState("");
-  const [signatureUploadLoading, setSignatureUploadLoading] = useState(false);
-  const [signatureFileName, setSignatureFileName] = useState("");
+  const [signatureHtml, setSignatureHtml] = useState("");
+  // GST option for 5th step
+  const [addGst, setAddGst] = useState(false);
 
   // Enhancement: Display options for product info
   const [displayOptions, setDisplayOptions] = useState<{
@@ -202,6 +183,22 @@ GST : 09AACFF0291J1ZF</p>`);
     })
   );
 
+  const { data: defaultMessages, isLoading: isDefaultLoading } = useDefaultMessages();
+
+  useEffect(() => {
+    if (
+      defaultMessages &&
+      defaultMessages.length > 0 &&
+      !id // Only set defaults if not editing
+    ) {
+      const msg = defaultMessages[0];
+      if (msg.formalMessage && !formalMessage) setFormalMessage(msg.formalMessage);
+      if (msg.notes && !notes) setNotes(msg.notes);
+      if (msg.billingDetails && !billing) setBilling(msg.billingDetails);
+      if (msg.termsAndConditions && !tnc) setTnc(msg.termsAndConditions);
+    }
+  }, [defaultMessages, id]);
+
   // Fetch quotation for edit mode
   useEffect(() => {
     if (!id) return;
@@ -223,12 +220,7 @@ GST : 09AACFF0291J1ZF</p>`);
         setSupply(data.supply || "");
         setIC(data.installationAndCommissioning || "");
         setTnc(data.termsAndConditions || "");
-        setSignatureUrl(
-          data.signatureImage
-            ? `https://cms-be.yogendersingh.tech/public/signatures/${data.signatureImage}`
-            : ""
-        );
-        setSignatureFileName(data.signatureImage || ""); // Ensure this is always set from fetched data
+        setSignatureHtml(data.signatureHtml || ""); // Ensure this is always set from fetched data
         setMachineInstall({
           qty: data.machineInstallation?.quantity?.toString() || "",
           unit: data.machineInstallation?.unit || "",
@@ -350,36 +342,6 @@ GST : 09AACFF0291J1ZF</p>`);
     );
   };
 
-  // Signature upload
-  const handleSignatureChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSignature(file);
-      setSignatureUrl(URL.createObjectURL(file));
-      setSignatureUploadLoading(true);
-      try {
-        const formData = new FormData();
-        formData.append("signature", file);
-        const response = await apiClient.post(
-          "/api/upload/signature",
-          formData,
-          {
-            headers: { "Content-Type": "multipart/form-data" },
-          }
-        );
-        console.log("response.data.fileName", response.data.filename);
-        setSignatureFileName(response.data.filename);
-      } catch (err) {
-        alert("Failed to upload signature.");
-        setSignatureFileName("");
-      } finally {
-        setSignatureUploadLoading(false);
-      }
-    }
-  };
-
   // Calculate total price
   const calculatePrice = () => {
     let total = 0;
@@ -446,7 +408,7 @@ GST : 09AACFF0291J1ZF</p>`);
         installationAndCommissioning:
           ic || "Installation and commissioning included",
         termsAndConditions: tnc || "Standard terms and conditions apply",
-        signatureImage: signatureFileName,
+        signatureHtml: signatureHtml,
         totalAmount: calculatePrice(),
         relatedProducts: relatedProducts.map((p) => p.value),
         suggestedProducts: suggestedProducts.map((p) => p.value),
@@ -725,7 +687,7 @@ GST : 09AACFF0291J1ZF</p>`);
                             onChange={(e) =>
                               handleProductRowChange(idx, "qty", e.target.value)
                             }
-                            className="w-[80px] border rounded px-2 py-1"
+                            className="w-full border rounded px-2 py-1"
                           />
                         </td>
                         <td className="px-2 py-1">
@@ -739,7 +701,7 @@ GST : 09AACFF0291J1ZF</p>`);
                                 e.target.value
                               )
                             }
-                            className="w-[80px] border rounded px-2 py-1"
+                            className="w-full border rounded px-2 py-1"
                           />
                         </td>
                         <td className="px-2 py-1">₹{price.toLocaleString()}</td>
@@ -984,16 +946,10 @@ GST : 09AACFF0291J1ZF</p>`);
                 const limitedOptions = (options as ProductOption[]).slice(0, 5);
                 setRelatedProducts(limitedOptions);
               }}
-              placeholder={
-                productsLoading
-                  ? "Loading products..."
-                  : "Select related products (max 5)"
-              }
+              placeholder={productsLoading ? "Loading products..." : "Select related products (max 5)"}
               isLoading={productsLoading}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Selected: {relatedProducts.length}/5
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Selected: {relatedProducts.length}/5</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1007,55 +963,34 @@ GST : 09AACFF0291J1ZF</p>`);
                 const limitedOptions = (options as ProductOption[]).slice(0, 5);
                 setSuggestedProducts(limitedOptions);
               }}
-              placeholder={
-                productsLoading
-                  ? "Loading products..."
-                  : "Select suggested products (max 5)"
-              }
+              placeholder={productsLoading ? "Loading products..." : "Select suggested products (max 5)"}
               isLoading={productsLoading}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Selected: {suggestedProducts.length}/5
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Selected: {suggestedProducts.length}/5</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Signature Upload
+              Signature (Rich Text)
             </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleSignatureChange}
-              disabled={signatureUploadLoading}
+            <CKEditor
+              editor={ClassicEditor}
+              data={signatureHtml}
+              onChange={(_, editor) => setSignatureHtml(editor.getData())}
+              config={{ toolbar: ["undo", "redo", "paragraph", "bold", "italic", "link", "bulletedList", "numberedList"] }}
             />
-            {signatureUploadLoading && (
-              <div className="mt-2 flex items-center text-blue-600">
-                <svg
-                  className="animate-spin h-5 w-5 mr-2 text-blue-600"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8z"
-                  ></path>
-                </svg>
-                Uploading signature...
-              </div>
-            )}
-            {signatureUrl && !signatureUploadLoading && (
-              <img src={signatureUrl} alt="Signature" className="mt-4 h-24" />
-            )}
+            <p className="text-xs text-gray-500 mt-2">Add your company signature, contact details, etc. here.</p>
+          </div>
+          <div className="flex items-center mb-4">
+            <input
+              id="add-gst-checkbox"
+              type="checkbox"
+              checked={addGst}
+              onChange={e => setAddGst(e.target.checked)}
+              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+            />
+            <label htmlFor="add-gst-checkbox" className="ml-2 block text-sm text-gray-700">
+              Add GST 20%
+            </label>
           </div>
         </div>
       )}
@@ -1078,15 +1013,8 @@ GST : 09AACFF0291J1ZF</p>`);
         ) : (
           <button
             onClick={handleGeneratePDF}
-            className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700 ${
-              signatureUploadLoading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            disabled={signatureUploadLoading}
-            title={
-              signatureUploadLoading
-                ? "Please wait for signature upload to finish"
-                : ""
-            }
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700"
+            title=""
           >
             <CheckCircle2 className="w-4 h-4 mr-2" /> Generate Quotation
           </button>

@@ -193,7 +193,7 @@ function Quotations() {
         </p>
         <button
           onClick={() => navigate("/quotations/create")}
-          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <Plus className="w-5 h-5 mr-2" />
           Create Quotation
@@ -209,7 +209,7 @@ function Quotations() {
         <h1 className="text-2xl font-semibold text-gray-900">Quotations</h1>
         <button
           onClick={() => navigate("/quotations/create")}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <Plus className="w-5 h-5 mr-2" />
           Create Quotation
@@ -222,8 +222,8 @@ function Quotations() {
       ) : quotations.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="bg-white rounded-lg shadow p-6 mt-4 overflow-x-auto flex-1 flex flex-col">
-          <h2 className="text-lg font-semibold mb-4">Your Quotations</h2>
+        <div className="bg-white rounded-lg shadow mt-4 overflow-x-auto flex-1 flex flex-col">
+          <h2 className="text-lg font-semibold px-4 py-4">Your Quotations</h2>
           <div className="flex-1 overflow-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">

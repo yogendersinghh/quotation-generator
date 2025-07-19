@@ -13,6 +13,7 @@ import Categories from './pages/Categories';
 import Models from './pages/Models';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import CreateQuotation from './pages/CreateQuotation';
+import DefaultFormalText from './pages/DefaultFormalText';
 
 function App() {
   return (
@@ -89,6 +90,7 @@ function App() {
             <Route path="models" element={<Models />} />
             <Route path="quotations/create" element={<CreateQuotation />} />
             <Route path="quotations/edit/:id" element={<CreateQuotation />} />
+            <Route path="default-formal-text" element={<DefaultFormalText />} />
           </Route>
         </Routes>
       </AuthProvider>

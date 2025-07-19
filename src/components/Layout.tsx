@@ -17,6 +17,7 @@ function Layout() {
     { name: 'Customers Info', href: '/customers', icon: UsersIcon, roles: ['admin', 'manager'] },
     { name: 'Create Quotations', href: '/quotations', icon: FileText, roles: ['admin', 'manager'] },
     { name: 'Users', href: '/users', icon: UsersIcon, roles: ['admin'] },
+    { name: 'Default Formal Text', href: '/default-formal-text', icon: FileText, roles: ['admin', 'manager'] },
   ];
 
   // Filter navigation based on user role
