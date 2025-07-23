@@ -62,7 +62,7 @@ function SignatureUploadAdapterPlugin(editor: any) {
         });
         const filename = response.data.filename;
         return {
-          default: `http://localhost:3033/public/signatures/${filename}`
+          default: `https://cms-be.yogendersingh.tech/public/signatures/${filename}`
         };
       }
     };

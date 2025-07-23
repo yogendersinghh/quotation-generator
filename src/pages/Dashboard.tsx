@@ -1047,7 +1047,7 @@ function Dashboard() {
                             title="Preview"
                             onClick={() => {
                               if (quotation.pdfFileName) {
-                                window.open(`http://localhost:3033/public/pdfs/${quotation.pdfFileName}`, "_blank");
+                                window.open(`https://cms-be.yogendersingh.tech/public/pdfs/${quotation.pdfFileName}`, "_blank");
                               } else {
                                 alert("No PDF available for this quotation.");
                               }
