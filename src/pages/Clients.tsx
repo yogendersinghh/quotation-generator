@@ -78,7 +78,7 @@ function Clients() {
         <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark flex items-center gap-2"
+          className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Customer

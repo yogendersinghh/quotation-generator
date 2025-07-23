@@ -11,9 +11,9 @@ export const defaultMessagesApi = {
 
   update: async (
     id: string,
-    updateData: Pick<DefaultMessage, 'formalMessage' | 'notes' | 'billingDetails' | 'termsAndConditions'>
+    updateData: Pick<DefaultMessage, 'formalMessage' | 'notes' | 'billingDetails' | 'termsAndConditions' | 'signatureImage'>
   ): Promise<DefaultMessage> => {
-    const { data } = await apiClient.put<DefaultMessage>(`${DEFAULT_MESSAGES_ENDPOINT}/${id}`, updateData);
+    const { data } = await apiClient.post<DefaultMessage>(`${DEFAULT_MESSAGES_ENDPOINT}/${id}`, updateData);
     return data;
   },
 }; 

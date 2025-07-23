@@ -312,7 +312,7 @@ function Customers() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
         <button
-          className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-md shadow transition-colors"
+          className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors"
           onClick={() => setShowAddCustomerModal(true)}
         >
           Add Customer

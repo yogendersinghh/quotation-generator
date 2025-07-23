@@ -27,11 +27,8 @@ const USERS_ENDPOINT = '/api/users';
 
 export const usersApi = {
   register: async (credentials: RegisterCredentials): Promise<RegisterResponse> => {
-    console.log('Making user registration request to:', `${USERS_ENDPOINT}/register`);
-    console.log('Registration credentials:', { email: credentials.email, name: credentials.name, role: credentials.role, userStatus: credentials.userStatus });
     try {
       const { data } = await apiClient.post<RegisterResponse>(`${USERS_ENDPOINT}/register`, credentials);
-      console.log('User registration response:', data);
       return data;
     } catch (error: any) {
       console.error('User registration API error:', {
@@ -44,11 +41,8 @@ export const usersApi = {
   },
 
   update: async (userId: string, userData: UpdateUserData): Promise<User> => {
-    console.log('Making user update request to:', `${USERS_ENDPOINT}/${userId}`);
-    console.log('Update data:', userData);
     try {
-      const { data } = await apiClient.put<User>(`${USERS_ENDPOINT}/${userId}`, userData);
-      console.log('User update response:', data);
+      const { data } = await apiClient.post<User>(`${USERS_ENDPOINT}/${userId}`, userData);
       return data;
     } catch (error: any) {
       console.error('User update API error:', {
@@ -61,10 +55,8 @@ export const usersApi = {
   },
 
   delete: async (userId: string): Promise<void> => {
-    console.log('Making user delete request to:', `${USERS_ENDPOINT}/${userId}`);
     try {
       await apiClient.delete(`${USERS_ENDPOINT}/${userId}`);
-      console.log('User deleted successfully:', userId);
     } catch (error: any) {
       console.error('User delete API error:', {
         status: error.response?.status,

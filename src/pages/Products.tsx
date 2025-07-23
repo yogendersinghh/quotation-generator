@@ -655,7 +655,7 @@ function Products() {
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           <button 
             onClick={() => navigate('/categories')}
-            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary-dark flex items-center justify-center"
+            className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             <FolderPlus className="w-4 h-4 mr-2" />
             Categories
@@ -669,7 +669,7 @@ function Products() {
           </button> */}
           <button 
             onClick={() => setIsFormOpen(true)}
-            className="bg-primary text-white px-3 sm:px-4 py-2 rounded-md hover:bg-primary-dark flex items-center justify-center"
+            className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Product
@@ -729,7 +729,7 @@ function Products() {
                 setCategoryFilter([]);
               }}
               disabled={!hasActiveFilters}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-primary-light disabled:cursor-not-allowed w-full justify-center"
+              className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               <FilterX className="w-4 h-4 mr-2" />
               Clear Filters
@@ -1183,7 +1183,7 @@ function Products() {
                     editingProduct ? handleUpdateProduct : handleAddProduct
                   }
                   disabled={isCreatingProduct || uploadImageMutation.isPending}
-                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isCreatingProduct || uploadImageMutation.isPending ? (
                     <div className="flex items-center">

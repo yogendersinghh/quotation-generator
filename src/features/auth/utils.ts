@@ -20,8 +20,6 @@ export const tokenStorage = {
       token = localStorage.getItem(TOKEN_KEY) || undefined;
     }
     
-    console.log('Getting token:', token ? `${token.substring(0, 20)}...` : 'null');
-    
     // Only validate if token exists and looks like a JWT
     if (token && !token.includes('.')) {
       console.warn('Token format looks invalid (no dots), clearing auth data');
@@ -33,7 +31,6 @@ export const tokenStorage = {
   },
   
   setToken: (token: string) => {
-    console.log('Setting token:', token ? `${token.substring(0, 20)}...` : 'null');
     if (!token) {
       console.error('Attempted to set empty token');
       return;
@@ -65,11 +62,9 @@ export const tokenStorage = {
       userStr = localStorage.getItem(USER_KEY) || undefined;
     }
     
-    console.log('Getting user from storage:', userStr);
     if (!userStr) return null;
     try {
       const user = JSON.parse(userStr);
-      console.log('Parsed user data:', user);
       
       // Validate user object structure
       if (!user || typeof user !== 'object' || !user.id || !user.email || !user.role) {
@@ -86,7 +81,6 @@ export const tokenStorage = {
   },
   
   setUser: (user: User) => {
-    console.log('Setting user:', user);
     if (!user || typeof user !== 'object') {
       console.error('Invalid user data');
       return;
@@ -117,7 +111,6 @@ export const tokenStorage = {
   },
   
   clear: () => {
-    console.log('Clearing auth data');
     // Clear all auth data
     tokenStorage.removeToken();
     tokenStorage.removeUser();
@@ -138,7 +131,6 @@ export const tokenStorage = {
   isValid: () => {
     const token = tokenStorage.getToken();
     const user = tokenStorage.getUser();
-    console.log('Checking auth validity - token:', !!token, 'user:', !!user);
     return Boolean(token && user && user.id && user.email && user.role);
   },
 }; 

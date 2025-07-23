@@ -29,7 +29,7 @@ export const categoriesApi = {
 
   // Update a category
   updateCategory: async (id: string, data: Partial<CreateCategoryRequest>): Promise<UpdateCategoryResponse> => {
-    const response = await apiClient.put(`/api/categories/${id}`, data);
+    const response = await apiClient.post(`/api/categories/${id}`, data);
     return response.data;
   },
 

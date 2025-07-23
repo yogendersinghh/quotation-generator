@@ -19,7 +19,7 @@ export const modelsApi = {
   },
 
   updateModel: async ({ id, data }: { id: string, data: UpdateModelRequest }): Promise<Model> => {
-    const response = await apiClient.put(`/api/models/${id}`, data);
+    const response = await apiClient.post(`/api/models/${id}`, data);
     return response.data;
   },
 

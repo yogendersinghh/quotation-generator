@@ -406,7 +406,7 @@ export const ClientForm = ({ onClose, initialData }: { onClose: () => void; init
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors"
               disabled={isPending}
             >
               Save

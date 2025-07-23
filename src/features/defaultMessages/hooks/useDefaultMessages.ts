@@ -12,7 +12,7 @@ export function useDefaultMessages() {
 export function useUpdateDefaultMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...updateData }: { id: string } & Pick<DefaultMessage, 'formalMessage' | 'notes' | 'billingDetails' | 'termsAndConditions'>) =>
+    mutationFn: ({ id, ...updateData }: { id: string } & Pick<DefaultMessage, 'formalMessage' | 'notes' | 'billingDetails' | 'termsAndConditions' | 'signatureImage'>) =>
       defaultMessagesApi.update(id, updateData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['defaultMessages'] });

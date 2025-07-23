@@ -193,7 +193,7 @@ function Quotations() {
         </p>
         <button
           onClick={() => navigate("/quotations/create")}
-          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" />
           Create Quotation
@@ -209,7 +209,7 @@ function Quotations() {
         <h1 className="text-2xl font-semibold text-gray-900">Quotations</h1>
         <button
           onClick={() => navigate("/quotations/create")}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" />
           Create Quotation

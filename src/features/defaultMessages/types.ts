@@ -4,5 +4,6 @@ export type DefaultMessage = {
   notes: string;
   billingDetails: string;
   termsAndConditions: string;
+  signatureImage: string;
   // Add other fields if the API returns more
 }; 

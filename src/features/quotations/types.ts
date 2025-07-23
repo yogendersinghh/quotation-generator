@@ -52,6 +52,7 @@ export type Quotation = {
   relatedProducts: string[];
   suggestedProducts: string[];
   __v: number;
+  pdfFileName?: string; // <-- Add this line for the PDF filename
 };
 
 export type PaginationInfo = {

@@ -240,7 +240,7 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
 
           <button
             type="submit"
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors w-full flex justify-center"
             disabled={isPending}
           >
             {isPending ? 'Creating user...' : 'Create User'}

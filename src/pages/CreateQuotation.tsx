@@ -8,9 +8,11 @@ import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 import { useNavigate, useParams } from "react-router-dom";
 import { useClients } from "../features/clients/hooks/useClients";
 import { useProducts } from "../features/products/hooks/useProducts";
+import { useCategories } from "../features/categories/hooks/useCategories";
 import { tokenStorage } from "../features/auth/utils";
 import { apiClient } from "../lib/axios";
 import { useDefaultMessages } from '../features/defaultMessages/hooks/useDefaultMessages';
+import { useRef } from 'react';
 
 // Types
 interface CustomerOption {
@@ -45,6 +47,28 @@ export interface Product {
   // ...other fields
 }
 
+// Custom upload adapter for CKEditor
+function SignatureUploadAdapterPlugin(editor: any) {
+  editor.plugins.get('FileRepository').createUploadAdapter = (loader: any) => {
+    return {
+      upload: async () => {
+        const file = await loader.file;
+        const formData = new FormData();
+        formData.append('signature', file);
+        const response = await apiClient.post('/api/upload/signature', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        const filename = response.data.filename;
+        return {
+          default: `http://localhost:3033/public/signatures/${filename}`
+        };
+      }
+    };
+  };
+}
+
 function CreateQuotation() {
   const { id } = useParams();
   const user = useAuthStore((state) => state.user);
@@ -58,6 +82,14 @@ function CreateQuotation() {
   const [customer, setCustomer] = useState<CustomerOption | null>(null);
   const [subject, setSubject] = useState("");
   const [formalMessage, setFormalMessage] = useState("");
+  // Step 2: Category selection for filtering products
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { data: categoriesData, isLoading: categoriesLoading } = useCategories({ limit: 100 });
+  console.log("🚀 ~ CreateQuotation ~ categoriesData:", categoriesData)
+  // Fix categoryOptions extraction
+  const categoryOptions = Array.isArray(categoriesData)
+    ? categoriesData.map((cat: any) => ({ value: cat._id, label: cat.name }))
+    : [];
   // Step 2 fields
   const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
   const [productRows, setProductRows] = useState<ProductRow[]>([]);
@@ -86,9 +118,6 @@ function CreateQuotation() {
   // Enhancement: Display options for product info
   const [displayOptions, setDisplayOptions] = useState<{
     [productId: string]: "name" | "image";
-  }>({});
-  const [descNoteOptions, setDescNoteOptions] = useState<{
-    [productId: string]: "description" | "notes";
   }>({});
   const [customNotes, setCustomNotes] = useState<{
     [productId: string]: string;
@@ -157,8 +186,10 @@ function CreateQuotation() {
     })
   );
 
+  // Update useProducts to filter by selectedCategory
   const { data: productsData, isLoading: productsLoading } = useProducts({
     limit: 1000,
+    ...(selectedCategory ? { categories: selectedCategory } : {}),
   });
   // --- Update productOptions mapping ---
   const productOptions: ProductOption[] = (productsData?.products || []).map(
@@ -196,6 +227,7 @@ function CreateQuotation() {
       if (msg.notes && !notes) setNotes(msg.notes);
       if (msg.billingDetails && !billing) setBilling(msg.billingDetails);
       if (msg.termsAndConditions && !tnc) setTnc(msg.termsAndConditions);
+      if (msg.signatureImage && !signatureHtml) setSignatureHtml(msg.signatureImage);
     }
   }, [defaultMessages, id]);
 
@@ -220,7 +252,7 @@ function CreateQuotation() {
         setSupply(data.supply || "");
         setIC(data.installationAndCommissioning || "");
         setTnc(data.termsAndConditions || "");
-        setSignatureHtml(data.signatureHtml || ""); // Ensure this is always set from fetched data
+        setSignatureHtml(data.signatureImage || ""); // Ensure this is always set from fetched data
         setMachineInstall({
           qty: data.machineInstallation?.quantity?.toString() || "",
           unit: data.machineInstallation?.unit || "",
@@ -232,6 +264,8 @@ function CreateQuotation() {
         // Store related and suggested products for mapping
         setFetchedRelatedProducts(data.relatedProducts || []);
         setFetchedSuggestedProducts(data.suggestedProducts || []);
+        setAddGst(data.GST || false);
+
       })
       .catch(() => alert("Failed to fetch quotation details."))
       .finally(() => setIsEditLoading(false));
@@ -367,11 +401,20 @@ function CreateQuotation() {
       }
 
       // Prepare products data
-      const products = productRows.map((row) => ({
-        product: row.product.value,
-        quantity: parseInt(row.qty) || 0,
-        unit: row.unit,
-      }));
+      const products = productRows.map((row) => {
+        const price = typeof row.product.price === "number" ? row.product.price : 0;
+        const qty = parseFloat(row.qty) || 0;
+        return {
+          product: row.product.value,
+          title: row.product.label,
+          image: row.product.image,
+          specification: editedOptionals[row.product.value]?.specification ?? row.product.specification ?? "",
+          quantity: parseInt(row.qty) || 0,
+          unit: row.unit,
+          price,
+          total: qty * price
+        };
+      });
 
       // Prepare machine installation data
       const machineInstallation = {
@@ -408,18 +451,19 @@ function CreateQuotation() {
         installationAndCommissioning:
           ic || "Installation and commissioning included",
         termsAndConditions: tnc || "Standard terms and conditions apply",
-        signatureHtml: signatureHtml,
+        signatureImage: signatureHtml,
         totalAmount: calculatePrice(),
         relatedProducts: relatedProducts.map((p) => p.value),
         suggestedProducts: suggestedProducts.map((p) => p.value),
+        GST: addGst,
       };
 
       console.log("Sending quotation data to API:", quotationData);
 
       let result;
       if (id) {
-        // Update quotation
-        const response = await apiClient.put(
+        // Update quotation (now using POST)
+        const response = await apiClient.post(
           `/api/quotations/${id}`,
           quotationData
         );
@@ -554,6 +598,21 @@ function CreateQuotation() {
       {/* Step 2 */}
       {step === 2 && (
         <div className="space-y-6">
+          {/* Category Dropdown */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Category
+            </label>
+            <Select
+              options={categoryOptions}
+              value={categoryOptions.find((o: any) => o.value === selectedCategory) || null}
+              onChange={(option) => setSelectedCategory(option ? option.value : null)}
+              isLoading={categoriesLoading}
+              placeholder={categoriesLoading ? "Loading categories..." : "Select category"}
+              isClearable
+            />
+          </div>
+          {/* Product Dropdown (filtered by category) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Select Products
@@ -563,19 +622,19 @@ function CreateQuotation() {
               options={productOptions}
               value={selectedProducts}
               onChange={handleProductSelect}
-              placeholder={
-                productsLoading ? "Loading products..." : "Select products"
-              }
+              placeholder={productsLoading ? "Loading products..." : "Select products"}
               isLoading={productsLoading}
+              isDisabled={!selectedCategory}
             />
           </div>
           {productRows.length > 0 && (
             <table className="w-full mt-4 border rounded">
               <thead>
                 <tr className="bg-gray-100">
+                  <th className="px-2 py-1 text-left">Serial No.</th>
                   <th className="px-2 py-1 text-left">Product Title</th>
-                  <th className="px-2 py-1 text-left">Make</th>
-                  <th className="px-2 py-1 text-left">Model</th>
+                  <th className="px-2 py-1 text-left">Image</th>
+                  <th className="px-2 py-1 text-left">Specification</th>
                   <th className="px-2 py-1 text-left">Qty</th>
                   <th className="px-2 py-1 text-left">Unit</th>
                   <th className="px-2 py-1 text-left">Price</th>
@@ -585,187 +644,64 @@ function CreateQuotation() {
               <tbody>
                 {productRows.map((row, idx) => {
                   const product = row.product;
-                  const price =
-                    typeof product.price === "number" ? product.price : 0;
+                  const price = typeof product.price === "number" ? product.price : 0;
                   const qty = parseFloat(row.qty) || 0;
                   const total = price * qty;
-                  const fields = [
-                    { key: "image", label: "Image", value: product.image },
-                    { key: "notes", label: "Notes", value: product.notes },
-                    {
-                      key: "specification",
-                      label: "Specification",
-                      value: product.specification,
-                    },
-                    {
-                      key: "description",
-                      label: "Description",
-                      value: product.description,
-                    },
-                    {
-                      key: "features",
-                      label: "Features",
-                      value: Array.isArray(product.features)
-                        ? product.features.join(", ")
-                        : String(product.features),
-                    },
-                    {
-                      key: "termsAndCondition",
-                      label: "Terms and Conditions",
-                      value: product.termsAndCondition,
-                    },
-                    {
-                      key: "warranty",
-                      label: "Product Warranty",
-                      value: product.warranty,
-                    },
-                    {
-                      key: "quality",
-                      label: "Quality",
-                      value: product.quality,
-                    },
-                  ];
                   return (
-                    <React.Fragment key={product.value}>
-                      <tr>
-                        <td colSpan={7} className="bg-white px-[8px] py-[8px]">
-                          <div className="flex items-center gap-4">
-                            <span className="font-semibold text-gray-500">
-                              Serial No: {idx + 1}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-
-                      <tr className="border-b border-grey">
-                        <td className="px-2 py-1 ">{product.label}</td>
-                        <td className="px-2 py-1">
-                          <input
-                            type="text"
-                            value={
-                              editedFields[product.value]?.make ??
-                              (isNameObject(product.make)
-                                ? product.make.name
-                                : product.make || "")
-                            }
-                            onChange={(e) =>
-                              handleEditField(
-                                product.value,
-                                "make",
-                                e.target.value
-                              )
-                            }
-                            className="w-full border rounded px-2 py-1"
-                            placeholder="Make"
+                    <tr key={product.value} className="border-b border-grey">
+                      <td className="px-2 py-1">{idx + 1}</td>
+                      <td className="px-2 py-1">{product.label}</td>
+                      <td className="px-2 py-1">
+                        {product.image ? (
+                              <img
+                            src={product.image}
+                            alt="Product"
+                            className="w-12 h-12 object-cover rounded border"
                           />
-                        </td>
-                        <td className="px-2 py-1">
-                          <input
-                            type="text"
-                            value={
-                              editedFields[product.value]?.model ??
-                              (isNameObject(product.model)
-                                ? product.model.name
-                                : product.model || "")
-                            }
-                            onChange={(e) =>
-                              handleEditField(
-                                product.value,
-                                "model",
-                                e.target.value
-                              )
-                            }
-                            className="w-full border rounded px-2 py-1"
-                            placeholder="Model"
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <input
-                            type="number"
-                            min="1"
-                            value={row.qty}
-                            onChange={(e) =>
-                              handleProductRowChange(idx, "qty", e.target.value)
-                            }
-                            className="w-full border rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="px-2 py-1">
-                          <input
-                            type="text"
-                            value={row.unit}
-                            onChange={(e) =>
-                              handleProductRowChange(
-                                idx,
-                                "unit",
-                                e.target.value
-                              )
-                            }
-                            className="w-full border rounded px-2 py-1"
-                          />
-                        </td>
-                        <td className="px-2 py-1">₹{price.toLocaleString()}</td>
-                        <td className="px-2 py-1">₹{total.toLocaleString()}</td>
-                      </tr>
-
-                      <tr>
-                        <td colSpan={7} className="bg-gray-50 px-4 py-2">
-                          <div className="flex flex-wrap gap-6">
-                            {fields.map(f => (
-                              <label key={f.key} className="flex flex-col items-start gap-1 min-w-[180px]">
-                                <span className="flex items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!includedFields[product.value]?.[f.key]}
-                                    onChange={() => toggleField(product.value, f.key)}
-                                    disabled={!f.value && f.key !== 'features'}
-                                  />
-                                  {f.key === 'image' ? (
-                                    f.value ? (
-                                      <span className="flex items-center gap-2">
-                                        <img src={f.value} alt="Product" className="w-10 h-10 object-cover rounded border" />
-                                        Image
-                                      </span>
-                                    ) : (
-                                      <span className="text-gray-400 flex items-center gap-2">
-                                        <span className="w-10 h-10 bg-gray-200 rounded border flex items-center justify-center">N/A</span>
-                                        Image (N/A)
-                                      </span>
-                                    )
-                                  ) : (
-                                    <span className={f.value ? "" : "text-gray-400"}>{f.label}</span>
-                                  )}
-                                </span>
-                                {/* Editable input for enabled fields except image */}
-                                {f.key !== 'image' && includedFields[product.value]?.[f.key] && (
-                                  f.key === 'notes' || f.key === 'specification' || f.key === 'description' || f.key === 'termsAndCondition' ? (
-                                    <textarea
-                                      className="w-full border rounded px-2 py-1 mt-1"
-                                      rows={2}
-                                      value={editedOptionals[product.value]?.[f.key] ?? f.value ?? ''}
-                                      onChange={e => handleEditOptional(product.value, f.key, e.target.value)}
-                                      placeholder={f.label}
-                                    />
-                                  ) : (
-                                    <input
-                                      type="text"
-                                      className="w-full border rounded px-2 py-1 mt-1"
-                                      value={editedOptionals[product.value]?.[f.key] ?? f.value ?? ''}
-                                      onChange={e => handleEditOptional(product.value, f.key, e.target.value)}
-                                      placeholder={f.label}
-                                    />
-                                  )
-                                )}
-                              </label>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                      {/* After the checkboxes row for each product, add a spacer row for vertical space */}
-                      <tr className="bg-primary-bg">
-                        <td colSpan={7} className="h-6 bg-transparent"></td>
-                      </tr>
-                    </React.Fragment>
+                        ) : (
+                          <span className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-400">
+                            N/A
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1">
+                        <textarea
+                          className="w-full border rounded px-2 py-1"
+                          rows={2}
+                          value={
+                            (editedOptionals[product.value]?.specification ?? (product.specification || ""))
+                          }
+                          onChange={e =>
+                            setEditedOptionals(prev => ({
+                              ...prev,
+                              [product.value]: {
+                                ...prev[product.value],
+                                specification: e.target.value
+                              }
+                            }))
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-1">
+                        <input
+                          type="number"
+                          min="1"
+                          value={row.qty}
+                          onChange={e => handleProductRowChange(idx, "qty", e.target.value)}
+                          className="w-full border rounded px-2 py-1"
+                        />
+                      </td>
+                      <td className="px-2 py-1">
+                        <input
+                          type="text"
+                          value={row.unit}
+                          onChange={e => handleProductRowChange(idx, "unit", e.target.value)}
+                          className="w-full border rounded px-2 py-1"
+                        />
+                      </td>
+                      <td className="px-2 py-1">₹{price.toLocaleString()}</td>
+                      <td className="px-2 py-1">₹{total.toLocaleString()}</td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -976,7 +912,39 @@ function CreateQuotation() {
               editor={ClassicEditor}
               data={signatureHtml}
               onChange={(_, editor) => setSignatureHtml(editor.getData())}
-              config={{ toolbar: ["undo", "redo", "paragraph", "bold", "italic", "link", "bulletedList", "numberedList"] }}
+              config={{
+                toolbar: [
+                  "undo", "redo", "paragraph", "bold", "italic", "link", "bulletedList", "numberedList",
+                  "imageUpload", "imageResize", "imageStyle:full", "imageStyle:side"
+                ],
+                image: {
+                  toolbar: [
+                    'imageTextAlternative',
+                    'imageStyle:full',
+                    'imageStyle:side',
+                    'imageResize',
+                  ],
+                  resizeUnit: '%',
+                  resizeOptions: [
+                    {
+                      name: 'resizeImage:original',
+                      value: null,
+                      label: 'Original'
+                    },
+                    {
+                      name: 'resizeImage:50',
+                      value: '50',
+                      label: '50%'
+                    },
+                    {
+                      name: 'resizeImage:75',
+                      value: '75',
+                      label: '75%'
+                    }
+                  ]
+                },
+                extraPlugins: [SignatureUploadAdapterPlugin],
+              }}
             />
             <p className="text-xs text-gray-500 mt-2">Add your company signature, contact details, etc. here.</p>
           </div>
@@ -1006,14 +974,14 @@ function CreateQuotation() {
         {step < 5 ? (
           <button
             onClick={() => setStep((s) => Math.min(5, s + 1))}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors"
           >
             Next
           </button>
         ) : (
           <button
             onClick={handleGeneratePDF}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-white bg-green-600 hover:bg-green-700"
+            className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors"
             title=""
           >
             <CheckCircle2 className="w-4 h-4 mr-2" /> Generate Quotation

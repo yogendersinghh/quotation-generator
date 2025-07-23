@@ -13,6 +13,7 @@ function DefaultFormalText() {
     notes: '',
     billingDetails: '',
     termsAndConditions: '',
+    signatureImage: '',
   });
 
   const openEditModal = (msg: any) => {
@@ -22,6 +23,17 @@ function DefaultFormalText() {
       notes: msg.notes || '',
       billingDetails: msg.billingDetails || '',
       termsAndConditions: msg.termsAndConditions || '',
+      signatureImage: msg.signatureImage || `<p>
+            We are confident that the quotation will meet your requirements and
+            look forward for your valued order.
+          </p>
+          <p><strong>Thanking you.</strong></p>
+          <p><strong>Yours truly</strong></p>
+          <div class="signature-line">
+            <strong><%= user ? user.name : 'Sumit Verma' %></strong><br />
+            <strong>(M) <%= user ? user.phone : '9810685715' %></strong>
+          </div>
+          <p style="margin-top: 20px"><strong>Attached: Brochure</strong></p>`
     });
   };
 
@@ -63,7 +75,7 @@ function DefaultFormalText() {
                   Formal Message
                 </h2>
                 <button
-                  className="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg shadow transition-colors"
+                  className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors flex items-center gap-1"
                   onClick={() => openEditModal(msg)}
                 >
                   <Edit2 className="w-4 h-4 mr-1" /> Edit
@@ -89,6 +101,12 @@ function DefaultFormalText() {
               </h2>
               <div className="bg-gray-50 rounded p-4 border border-gray-100">
                 <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: msg.termsAndConditions }} />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-800 flex items-center gap-2 mb-2 mt-4">
+                Signature Image
+              </h2>
+              <div className="bg-gray-50 rounded p-4 border border-gray-100">
+                <div className="text-gray-700" dangerouslySetInnerHTML={{ __html: msg.signatureImage }} />
               </div>
             </div>
           ))
@@ -149,6 +167,15 @@ function DefaultFormalText() {
                   editor={ClassicEditor}
                   data={form.termsAndConditions}
                   onChange={(_, editor) => handleChange('termsAndConditions', editor.getData())}
+                  config={{ toolbar: ['undo', 'redo', 'paragraph', 'bold', 'italic'] }}
+                />
+              </div>
+              <div>
+                <label className="block font-semibold mb-1">Signature Image</label>
+                <CKEditor
+                  editor={ClassicEditor}
+                  data={form.signatureImage}
+                  onChange={(_, editor) => handleChange('signatureImage', editor.getData())}
                   config={{ toolbar: ['undo', 'redo', 'paragraph', 'bold', 'italic'] }}
                 />
               </div>

@@ -36,10 +36,8 @@ export const clientsApi = {
         }
       });
     }
-    console.log('Making GET request to clients API:', url.toString());
     try {
       const { data } = await apiClient.get<ClientsResponse>(url.pathname + url.search);
-      console.log('Clients API response:', data);
       return data;
     } catch (error: any) {
       console.error('Clients API error:', {
@@ -69,11 +67,8 @@ export const clientsApi = {
   },
 
   createClient: async (payload: CreateClientPayload): Promise<CreateClientResponse> => {
-    console.log('Making POST request to create client:', `${CLIENTS_ENDPOINT}`);
-    console.log('Client payload:', payload);
     try {
       const { data } = await apiClient.post<CreateClientResponse>(CLIENTS_ENDPOINT, payload);
-      console.log('Create client response:', data);
       return data;
     } catch (error: any) {
       console.error('Create client API error:', {
@@ -106,11 +101,8 @@ export const clientsApi = {
   },
 
   updateClient: async (clientId: string, payload: Partial<CreateClientPayload>): Promise<CreateClientResponse> => {
-    console.log('Making PUT request to update client:', `${CLIENTS_ENDPOINT}/${clientId}`);
-    console.log('Client update payload:', payload);
     try {
-      const { data } = await apiClient.put<CreateClientResponse>(`${CLIENTS_ENDPOINT}/${clientId}`, payload);
-      console.log('Update client response:', data);
+      const { data } = await apiClient.post<CreateClientResponse>(`${CLIENTS_ENDPOINT}/${clientId}`, payload);
       return data;
     } catch (error: any) {
       console.error('Update client API error:', {
@@ -123,10 +115,8 @@ export const clientsApi = {
   },
 
   deleteClient: async (clientId: string): Promise<void> => {
-    console.log('Making DELETE request to delete client:', `${CLIENTS_ENDPOINT}/${clientId}`);
     try {
       await apiClient.delete(`${CLIENTS_ENDPOINT}/${clientId}`);
-      console.log(`Client ${clientId} deleted successfully`);
     } catch (error: any) {
       console.error('Delete client API error:', {
         status: error.response?.status,

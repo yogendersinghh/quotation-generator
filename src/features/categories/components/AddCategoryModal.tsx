@@ -13,9 +13,6 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onCl
   
   const createCategory = useCreateCategory();
 
-  // Debug logging
-  console.log('AddCategoryModal render:', { isOpen, name, description });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -48,11 +45,8 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onCl
   };
 
   if (!isOpen) {
-    console.log('Modal not open, returning null');
     return null;
   }
-
-  console.log('Modal is open, rendering modal');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -118,7 +112,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({ isOpen, onCl
             <button
               type="submit"
               disabled={createCategory.isPending || !name.trim() || !description.trim()}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-primary border border-transparent rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors inline-flex items-center"
             >
               {createCategory.isPending ? (
                 <>

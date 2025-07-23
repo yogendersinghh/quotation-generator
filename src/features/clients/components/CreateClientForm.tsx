@@ -356,7 +356,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
             ))}
             <button
               type="button"
-              className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              className="flex items-center gap-2 px-4 py-2 bg-[#F7931E] text-white rounded font-medium hover:bg-orange-600 transition-colors"
               onClick={addCustomer}
             >
               <Plus size={18} /> Add More Customer
@@ -373,7 +373,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+              className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors"
             >
               Save
             </button>

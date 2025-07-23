@@ -968,7 +968,7 @@ function Dashboard() {
                       : `Showing ${quotations.length} of ${pagination?.total || 0} quotations`}
                   </div>
                   <button
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-md shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleExportExcel}
                     disabled={exporting}
                   >
@@ -1045,16 +1045,15 @@ function Dashboard() {
                           <button
                             className="text-gray-400 hover:text-gray-600 focus:outline-none"
                             title="Preview"
-                            onClick={() => {/* TODO: Preview logic */}}
+                            onClick={() => {
+                              if (quotation.pdfFileName) {
+                                window.open(`http://localhost:3033/public/pdfs/${quotation.pdfFileName}`, "_blank");
+                              } else {
+                                alert("No PDF available for this quotation.");
+                              }
+                            }}
                           >
                             <Eye className="w-5 h-5" />
-                          </button>
-                          <button
-                            className="text-gray-400 hover:text-gray-600 focus:outline-none"
-                            title="Download"
-                            onClick={() => {/* TODO: Download logic */}}
-                          >
-                            <Download className="w-5 h-5" />
                           </button>
                           {quotation.status == "draft" ? (
                             <div className="relative min-w-[77px]">

@@ -6,6 +6,7 @@ interface UseProductsParams {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  categories?: string | string[];
 }
 
 export const useProducts = (params?: UseProductsParams) => {

@@ -6,12 +6,8 @@ const AUTH_ENDPOINT = '/api/users';
 
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-    console.log('Making login request to:', `${AUTH_ENDPOINT}/login`);
-    console.log('Login credentials:', { email: credentials.email });
-    
     try {
       const { data } = await apiClient.post<AuthResponse>(`${AUTH_ENDPOINT}/login`, credentials);
-      console.log('Login response:', data);
       return data;
     } catch (error: any) {
       console.error('Login API error:', {
