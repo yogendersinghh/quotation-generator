@@ -367,7 +367,7 @@ function Customers() {
           // Case 1: No customers in the system AND no active search
           <div className="flex items-center justify-center">
             <div className="text-center bg-white p-8 rounded-lg shadow-md w-full">
-              <UsersIcon className="w-24 h-24 text-indigo-500 mx-auto mb-6 bg-indigo-50 p-4 rounded-full" />
+              <UsersIcon className="w-24 h-24 text-[#F7931E] mx-auto mb-6 bg-[#F7931E] bg-opacity-10 p-4 rounded-full" />
               <h2 className="text-2xl font-bold mb-3 text-gray-800">
                 No Customers Added Yet
               </h2>
@@ -378,7 +378,7 @@ function Customers() {
                 You can include their contact information and details.
               </p>
               <button
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center mx-auto transition-colors duration-200"
+                className="bg-[#F7931E] hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center mx-auto transition-colors duration-200"
                 onClick={handleAddCustomer}
               >
                 <Plus className="mr-2" size={20} /> Add Your First Customer

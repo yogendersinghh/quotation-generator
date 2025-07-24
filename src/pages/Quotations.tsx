@@ -195,7 +195,7 @@ function Quotations() {
         </p>
         <button
           onClick={() => navigate("/quotations/create")}
-          className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors flex items-center"
+          className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors flex items-center mx-auto justify-center"
         >
           <Plus className="w-5 h-5 mr-2" />
           Create Quotation
