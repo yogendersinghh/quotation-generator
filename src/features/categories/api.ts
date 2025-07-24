@@ -35,7 +35,7 @@ export const categoriesApi = {
 
   // Delete a category
   deleteCategory: async (id: string): Promise<DeleteCategoryResponse> => {
-    const response = await apiClient.delete(`/api/categories/${id}`);
+    const response = await apiClient.post('/api/categories/delete', { id });
     return response.data;
   },
 }; 

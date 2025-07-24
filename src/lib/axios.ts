@@ -3,7 +3,7 @@ import { tokenStorage } from '../features/auth/utils';
 
 // Create axios instance with base URL
 export const apiClient = axios.create({
-  baseURL: "https://cms-be.yogendersingh.tech",
+  baseURL: import.meta.env.VITE_CMS_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

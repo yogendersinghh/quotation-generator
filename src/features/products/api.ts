@@ -119,7 +119,7 @@ export const productsApi = {
 
   deleteProduct: async (id: string): Promise<void> => {
     try {
-      await apiClient.delete(`${PRODUCTS_ENDPOINT}/${id}`);
+      await apiClient.post(`${PRODUCTS_ENDPOINT}/delete`, { id });
     } catch (error: any) {
       console.error('Delete product error:', {
         status: error.response?.status,

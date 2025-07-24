@@ -56,7 +56,7 @@ export const usersApi = {
 
   delete: async (userId: string): Promise<void> => {
     try {
-      await apiClient.delete(`${USERS_ENDPOINT}/${userId}`);
+      await apiClient.post(`${USERS_ENDPOINT}/delete`, { userId });
     } catch (error: any) {
       console.error('User delete API error:', {
         status: error.response?.status,

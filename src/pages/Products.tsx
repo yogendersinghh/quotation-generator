@@ -210,6 +210,7 @@ function Products() {
   // Add state for GST
   const [addGst, setAddGst] = useState(false);
 
+  const CMS_BASE_URL = import.meta.env.VITE_CMS_BASE_URL;
   // Refetch categories when modal opens
   useEffect(() => {
     if (isFormOpen) {
@@ -799,12 +800,9 @@ function Products() {
                 <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Image</th>
                 <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Title</th>
                 <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
-                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Notes</th>
                 <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Specification</th>
-                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Model</th>
                 <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Category</th>
-                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Warranty</th>
-                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Price</th>
+                <th className="px-2 sm:px-6 py-3 text-sm text-gray-500 uppercase tracking-wider whitespace-nowrap">Price</th>
                 <th className="px-2 sm:px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
             </thead>
@@ -814,7 +812,7 @@ function Products() {
                   <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-center">
                     {product.productImage ? (
                       <img
-                        src={`https://cms-be.yogendersingh.tech/public/products/${product.productImage}`}
+                        src={`${CMS_BASE_URL}/public/products/${product.productImage}`}
                         alt={product.title}
                         className="h-12 w-12 object-cover rounded"
                       />
@@ -824,17 +822,12 @@ function Products() {
                   </td>
                   <td className="px-2 sm:px-6 py-3 whitespace-nowrap font-medium text-gray-900">{product.title}</td>
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.description}>{product.description}</td>
-                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.notes}>{product.notes}</td>
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.specification}>{product.specification}</td>
-                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">
-                    {typeof product.model === 'object' && product.model !== null ? (product.model as any).name : product.model}
-                  </td>
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">
                     {Array.isArray(product.categories)
                       ? product.categories.map(cat => typeof cat === 'object' && cat !== null ? (cat as any).name : cat).join(', ')
                       : product.categories}
                   </td>
-                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">{product.warranty}</td>
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">{formatPrice(product.price)}</td>
                   <td className="px-2 sm:px-6 py-3 text-right text-sm font-medium">
                     <div className="relative action-dropdown">
@@ -982,7 +975,7 @@ function Products() {
                       {editingProduct && productImageFilename && !productImageFile && (
                         <div className="flex items-center space-x-2">
                           <img
-                            src={`https://cms-be.yogendersingh.tech/public/products/${productImageFilename}`}
+                            src={`${CMS_BASE_URL}/public/products/${productImageFilename}`}
                             alt="Current Product Image"
                             className="h-16 w-16 rounded object-cover border"
                           />

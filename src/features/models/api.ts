@@ -24,7 +24,7 @@ export const modelsApi = {
   },
 
   deleteModel: async (id: string): Promise<DeleteModelResponse> => {
-    const response = await apiClient.delete(`/api/models/${id}`);
+    const response = await apiClient.post('/api/models/delete', { id });
     return response.data;
   },
 }; 

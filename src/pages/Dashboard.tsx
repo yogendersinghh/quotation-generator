@@ -442,6 +442,8 @@ function Dashboard() {
     );
   };
 
+  const CMS_BASE_URL = import.meta.env.VITE_CMS_BASE_URL;
+
   return (
     <div className="space-y-6">
       {/* <AuthDebug /> */}
@@ -1047,7 +1049,7 @@ function Dashboard() {
                             title="Preview"
                             onClick={() => {
                               if (quotation.pdfFileName) {
-                                window.open(`https://cms-be.yogendersingh.tech/public/pdfs/${quotation.pdfFileName}`, "_blank");
+                                window.open(`${CMS_BASE_URL}/public/pdfs/${quotation.pdfFileName}`, "_blank");
                               } else {
                                 alert("No PDF available for this quotation.");
                               }

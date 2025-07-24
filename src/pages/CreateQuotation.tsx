@@ -47,6 +47,8 @@ export interface Product {
   // ...other fields
 }
 
+const CMS_BASE_URL = import.meta.env.VITE_CMS_BASE_URL;
+
 // Custom upload adapter for CKEditor
 function SignatureUploadAdapterPlugin(editor: any) {
   editor.plugins.get('FileRepository').createUploadAdapter = (loader: any) => {
@@ -62,7 +64,7 @@ function SignatureUploadAdapterPlugin(editor: any) {
         });
         const filename = response.data.filename;
         return {
-          default: `https://cms-be.yogendersingh.tech/public/signatures/${filename}`
+          default: `${CMS_BASE_URL}/public/signatures/${filename}`
         };
       }
     };
@@ -196,9 +198,7 @@ function CreateQuotation() {
     (product) => ({
       value: product._id,
       label: product.title,
-      image: product.productImage
-        ? `https://cms-be.yogendersingh.tech/public/products/${product.productImage}`
-        : undefined,
+      image: product.productImage ? `${CMS_BASE_URL}/public/products/${product.productImage}` : undefined,
       description: product.description || "",
       notes: product.notes || "",
       make: isNameObject(product.make) ? product.make.name : product.make || "",

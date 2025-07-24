@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { Plus, MoreVertical, Edit2, Trash2, Eye } from "lucide-react";
 import { useAuth } from "../features/auth/hooks/useAuth";
 import { useAuthContext } from "../features/auth/context/AuthContext";
 import { Quotation } from "../features/quotations/types";
@@ -18,6 +18,8 @@ function Quotations() {
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(
     null
   );
+
+  const CMS_BASE_URL = import.meta.env.VITE_CMS_BASE_URL;
 
   // Check if user is admin or manager (allowed roles for quotations)
   const isAuthorized = user?.role === 'admin' || user?.role === 'manager';
@@ -77,7 +79,7 @@ function Quotations() {
   const confirmDelete = async () => {
     if (!deletingId) return;
     try {
-      await apiClient.delete(`/api/quotations/${deletingId}`);
+      await apiClient.post(`/api/quotations/${deletingId}/delete`);
       setShowDeleteModal(false);
       setDeletingId(null);
       fetchQuotations();
@@ -305,6 +307,21 @@ function Quotations() {
                               role="menu"
                               aria-orientation="vertical"
                             >
+                              <button
+                                onClick={() => {
+                                  if (q.pdfFileName) {
+                                    window.open(`${CMS_BASE_URL}/public/pdfs/${q.pdfFileName}`, "_blank");
+                                  } else {
+                                    alert("No PDF available for this quotation.");
+                                  }
+                                  setActionDropdownOpen(null);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                role="menuitem"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </button>
                               <button
                                 onClick={() => {
                                   handleEdit(q._id);

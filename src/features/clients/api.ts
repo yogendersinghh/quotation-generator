@@ -116,7 +116,7 @@ export const clientsApi = {
 
   deleteClient: async (clientId: string): Promise<void> => {
     try {
-      await apiClient.delete(`${CLIENTS_ENDPOINT}/${clientId}`);
+      await apiClient.post(`${CLIENTS_ENDPOINT}/delete`, { clientId });
     } catch (error: any) {
       console.error('Delete client API error:', {
         status: error.response?.status,
