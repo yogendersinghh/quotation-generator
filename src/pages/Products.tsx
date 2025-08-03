@@ -251,8 +251,10 @@ function Products() {
       setSpecification(product.specification || "");
       setTermsAndCondition(product.termsAndCondition || "");
       setMake(product.make || "");
-      setDataSheetFile(product.dataSheet ? new File([], product.dataSheet) : null);
-      setCatalogFile(product.catalog ? new File([], product.catalog) : null);
+      // For existing files, we can't create File objects from filenames
+      // So we'll set the filenames and let the UI handle the display
+      setDataSheetFile(null);
+      setCatalogFile(null);
       setDataSheetFilename(product.dataSheet || null);
       setCatalogFilename(product.catalog || null);
     }
@@ -1128,10 +1130,12 @@ function Products() {
                         onChange={handleDataSheetChange}
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                       />
-                      {dataSheetFile && (
-                        <span className="text-xs text-gray-500 mt-1 block">{dataSheetFile.name}</span>
+                      {(dataSheetFile || dataSheetFilename) && (
+                        <span className="text-xs text-gray-500 mt-1 block">
+                          {dataSheetFile ? dataSheetFile.name : dataSheetFilename}
+                        </span>
                       )}
-                      {!dataSheetFile && <span className="text-xs text-gray-500 mt-1 block">No file chosen</span>}
+                      {!dataSheetFile && !dataSheetFilename && <span className="text-xs text-gray-500 mt-1 block">No file chosen</span>}
                       {dataSheetFilename && (
                         <button type="button" onClick={handleRemoveDataSheet} className="ml-2 text-red-500 text-xs">Remove</button>
                       )}
@@ -1150,10 +1154,12 @@ function Products() {
                         onChange={handleCatalogChange}
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                       />
-                      {catalogFile && (
-                        <span className="text-xs text-gray-500 mt-1 block">{catalogFile.name}</span>
+                      {(catalogFile || catalogFilename) && (
+                        <span className="text-xs text-gray-500 mt-1 block">
+                          {catalogFile ? catalogFile.name : catalogFilename}
+                        </span>
                       )}
-                      {!catalogFile && <span className="text-xs text-gray-500 mt-1 block">No file chosen</span>}
+                      {!catalogFile && !catalogFilename && <span className="text-xs text-gray-500 mt-1 block">No file chosen</span>}
                       {catalogFilename && (
                         <button type="button" onClick={handleRemoveCatalog} className="ml-2 text-red-500 text-xs">Remove</button>
                       )}

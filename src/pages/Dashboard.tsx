@@ -423,6 +423,18 @@ function Dashboard() {
     }
   };
 
+  // Format status display function
+  const formatStatusDisplay = (status: string) => {
+
+    if (!status) return "-";
+    
+    if (status === "Under Development") {
+      return "UNDER DISCUSSION";
+    }
+    
+    return status.replace("_", " ").toUpperCase();
+  };
+
   const getAdminStatusColor = (status: string) => {
     switch (status) {
       case "Under Development":
@@ -854,7 +866,7 @@ function Dashboard() {
                     className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">All Statuses</option>
-                    <option value="Under Development">Under Development</option>
+                    <option value="Under Development">Under Discussion</option>
                     <option value="Booked">Booked</option>
                     <option value="Lost">Lost</option>
                   </select>
@@ -1039,7 +1051,7 @@ function Dashboard() {
                             quotation.converted as string
                           )}`}
                         >
-                          {quotation.converted.toUpperCase()}
+                          {formatStatusDisplay(quotation.converted)}
                         </span>
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap text-right text-sm font-medium">

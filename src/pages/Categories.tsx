@@ -209,8 +209,8 @@ function Categories() {
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <div className="max-w-md mx-auto">
             <div className="relative w-48 h-48 mx-auto mb-6">
-              <div className="absolute inset-0 bg-indigo-100 rounded-full opacity-20 animate-pulse"></div>
-              <FolderPlus className="w-32 h-32 text-indigo-500 mx-auto relative top-7 z-10" />
+                              <div className="absolute inset-0 bg-orange-100 rounded-full opacity-20 animate-pulse"></div>
+                              <FolderPlus className="w-32 h-32 text-orange-500 mx-auto relative top-7 z-10" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               {searchTerm ? "No Categories Found" : "No Categories Added Yet"}
@@ -223,7 +223,7 @@ function Categories() {
             {!searchTerm && (
               <button
                 onClick={handleAddCategory}
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-orange-500 hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Add Your First Category

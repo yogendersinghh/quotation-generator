@@ -55,7 +55,7 @@ export const quotationsApi = {
     
     console.log('Status update:', { status, action });
     try {
-      await apiClient.patch(`/api/quotations/admin/${quotationId}/status`, { action });
+      await apiClient.post(`/api/quotations/admin/${quotationId}/status`, { action });
     } catch (error: any) {
       console.error('Update quotation status API error:', {
         status: error.response?.status,

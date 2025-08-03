@@ -14,6 +14,7 @@ interface CustomerContact {
 
 interface CompanyFormState {
   companyName: string;
+  companyCode: string;
   address: string;
   place: string;
   city: string;
@@ -32,6 +33,7 @@ const emptyCustomer = (): CustomerContact => ({
 export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
   const [form, setForm] = useState<CompanyFormState>({
     companyName: '',
+    companyCode: '',
     address: '',
     place: '',
     city: '',
@@ -118,6 +120,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
     // Prepare payload for new API
     const payload: CreateCompanyWithUsersPayload = {
       companyName: form.companyName,
+      companyCode: form.companyCode,
       address: form.address,
       place: form.place,
       city: form.city,
@@ -139,6 +142,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       setForm({
         companyName: '',
+        companyCode: '',
         address: '',
         place: '',
         city: '',
@@ -180,6 +184,22 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                   placeholder="ABC Company"
                   required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Company Code</label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Briefcase className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  name="companyCode"
+                  value={form.companyCode}
+                  onChange={handleCompanyChange}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="COMP001"
                 />
               </div>
             </div>

@@ -18,6 +18,7 @@ import { useRef } from 'react';
 interface CustomerOption {
   value: string;
   label: string;
+  companyCode?: string;
 }
 interface ProductOption {
   value: string;
@@ -116,6 +117,7 @@ function CreateQuotation() {
   const [signatureHtml, setSignatureHtml] = useState("");
   // GST option for 5th step
   const [addGst, setAddGst] = useState(false);
+  const [gstPercentage, setGstPercentage] = useState("20");
 
   // Enhancement: Display options for product info
   const [displayOptions, setDisplayOptions] = useState<{
@@ -142,6 +144,10 @@ function CreateQuotation() {
 
   // Add state to track edited optional fields per product row
   const [editedOptionals, setEditedOptionals] = useState<{ [productId: string]: { [field: string]: string } }>({});
+  
+  // Add state to track edited specifications for related and suggested products
+  const [editedRelatedSpecs, setEditedRelatedSpecs] = useState<{ [productId: string]: string }>({});
+  const [editedSuggestedSpecs, setEditedSuggestedSpecs] = useState<{ [productId: string]: string }>({});
 
   // Helper to toggle a field for a product
   function toggleField(productId: string, field: string) {
@@ -184,7 +190,8 @@ function CreateQuotation() {
   const customerOptions: CustomerOption[] = (clientsData?.clients || []).map(
     (client) => ({
       value: client._id,
-      label: client.name,
+      label: `${client.name}${client.companyCode ? ` (${client.companyCode})` : ''}`,
+      companyCode: client.companyCode,
     })
   );
 
@@ -242,7 +249,7 @@ function CreateQuotation() {
         setTitle(data.title || "");
         setCustomer(
           data.client
-            ? { value: data.client._id, label: data.client.name }
+            ? { value: data.client._id, label: `${data.client.name}${data.client.companyCode ? ` (${data.client.companyCode})` : ''}`, companyCode: data.client.companyCode }
             : null
         );
         setSubject(data.subject || "");
@@ -265,6 +272,7 @@ function CreateQuotation() {
         setFetchedRelatedProducts(data.relatedProducts || []);
         setFetchedSuggestedProducts(data.suggestedProducts || []);
         setAddGst(data.GST || false);
+        setGstPercentage(data.gstPercentage || "20");
 
       })
       .catch(() => alert("Failed to fetch quotation details."))
@@ -400,6 +408,29 @@ function CreateQuotation() {
         return;
       }
 
+      // Validate mandatory fields
+      const mandatoryFields = {
+        title: title?.trim(),
+        customer: customer?.value,
+        subject: subject?.trim(),
+        formalMessage: formalMessage?.trim(),
+        products: productRows.length > 0,
+        notes: notes?.trim(),
+        billing: billing?.trim(),
+        supply: supply?.trim(),
+        ic: ic?.trim(),
+        tnc: tnc?.trim(),
+      };
+
+      const missingFields = Object.entries(mandatoryFields)
+        .filter(([key, value]) => !value)
+        .map(([key]) => key);
+
+      if (missingFields.length > 0) {
+        alert(`Please fill in all mandatory fields: ${missingFields.join(', ')}`);
+        return;
+      }
+
       // Prepare products data
       const products = productRows.map((row) => {
         const price = typeof row.product.price === "number" ? row.product.price : 0;
@@ -407,6 +438,7 @@ function CreateQuotation() {
         return {
           product: row.product.value,
           title: row.product.label,
+          model: row.product.model,
           image: row.product.image,
           specification: editedOptionals[row.product.value]?.specification ?? row.product.specification ?? "",
           quantity: parseInt(row.qty) || 0,
@@ -416,13 +448,13 @@ function CreateQuotation() {
         };
       });
 
-      // Prepare machine installation data
-      const machineInstallation = {
+      // Prepare machine installation data (optional)
+      const machineInstallation = (machineInstall.qty || machineInstall.unit || machineInstall.price || machineInstall.total) ? {
         quantity: parseInt(machineInstall.qty) || 0,
         unit: machineInstall.unit,
         price: parseFloat(machineInstall.price) || 0,
         total: parseFloat(machineInstall.total) || 0,
-      };
+      } : null;
 
       // Generate quotation reference number (you might want to implement a proper generator)
       const quotationRefNumber = `QT-${Date.now()}-${Math.random()
@@ -430,33 +462,49 @@ function CreateQuotation() {
         .substr(2, 9)}`;
 
       // Prepare the request payload
-      const quotationData = {
+      const quotationData: any = {
         quotationRefNumber,
-        title: title || "Quotation for Industrial Equipment",
-        client: customer?.value || "",
-        subject:
-          subject ||
-          "Created by " +
-            (user?.name || "User") +
-            " Supply of Industrial Equipment",
-        formalMessage:
-          formalMessage ||
-          "Dear Sir/Madam,\n\nWe are pleased to submit our quotation for the requested equipment...",
+        title: title,
+        client: customer?.value,
+        subject: subject,
+        formalMessage: formalMessage,
         products,
-        machineInstallation,
-        notes: notes || "Additional notes here",
-        billingDetails:
-          billing || "Payment terms: 50% advance, 50% before delivery",
-        supply: supply || "Delivery within 30 days",
-        installationAndCommissioning:
-          ic || "Installation and commissioning included",
-        termsAndConditions: tnc || "Standard terms and conditions apply",
-        signatureImage: signatureHtml,
+        notes: notes,
+        billingDetails: billing,
+        supply: supply,
+        installationAndCommissioning: ic,
+        termsAndConditions: tnc,
         totalAmount: calculatePrice(),
-        relatedProducts: relatedProducts.map((p) => p.value),
-        suggestedProducts: suggestedProducts.map((p) => p.value),
         GST: addGst,
+        gstPercentage: parseFloat(gstPercentage) || 0,
       };
+
+      // Add optional fields only if they have values
+      if (machineInstallation) {
+        quotationData.machineInstallation = machineInstallation;
+      }
+
+      if (signatureHtml?.trim()) {
+        quotationData.signatureImage = signatureHtml;
+      }
+
+      if (relatedProducts.length > 0) {
+        quotationData.relatedProducts = relatedProducts.map((p) => ({
+          product: p.value,
+          model: p.model,
+          image: p.image,
+          specification: editedRelatedSpecs[p.value] ?? p.specification ?? ""
+        }));
+      }
+
+      if (suggestedProducts.length > 0) {
+        quotationData.suggestedProducts = suggestedProducts.map((p) => ({
+          product: p.value,
+          model: p.model,
+          image: p.image,
+          specification: editedSuggestedSpecs[p.value] ?? p.specification ?? ""
+        }));
+      }
 
       console.log("Sending quotation data to API:", quotationData);
 
@@ -481,13 +529,16 @@ function CreateQuotation() {
       const err = error as any;
       if (err.response) {
         console.error("API error response:", err.response.data);
-        alert(
-          (err.response.data && err.response.data.message) ||
-            "Failed to save quotation. Please try again."
-        );
+        const errorMessage = err.response.data?.message || 
+                           err.response.data?.error || 
+                           `Server error: ${err.response.status} - ${err.response.statusText}`;
+        alert(`Failed to save quotation: ${errorMessage}`);
+      } else if (err.request) {
+        console.error("Network error:", err.request);
+        alert("Network error: Unable to connect to the server. Please check your internet connection and try again.");
       } else {
         console.error("Error saving quotation:", err);
-        alert("Failed to save quotation. Please try again.");
+        alert(`Error saving quotation: ${err.message || 'An unexpected error occurred. Please try again.'}`);
       }
     }
   };
@@ -558,6 +609,13 @@ function CreateQuotation() {
               }
               isClearable
               isLoading={clientsLoading}
+              filterOption={(option, inputValue) => {
+                const label = option.label.toLowerCase();
+                const input = inputValue.toLowerCase();
+                const companyCode = option.data.companyCode?.toLowerCase() || '';
+                
+                return label.includes(input) || companyCode.includes(input);
+              }}
             />
           </div>
           <div>
@@ -632,7 +690,7 @@ function CreateQuotation() {
               <thead>
                 <tr className="bg-gray-100">
                   <th className="px-2 py-1 text-left">Serial No.</th>
-                  <th className="px-2 py-1 text-left">Product Title</th>
+                  <th className="px-2 py-1 text-left">Model</th>
                   <th className="px-2 py-1 text-left">Image</th>
                   <th className="px-2 py-1 text-left">Specification</th>
                   <th className="px-2 py-1 text-left">Qty</th>
@@ -650,7 +708,7 @@ function CreateQuotation() {
                   return (
                     <tr key={product.value} className="border-b border-grey">
                       <td className="px-2 py-1">{idx + 1}</td>
-                      <td className="px-2 py-1">{product.label}</td>
+                      <td className="px-2 py-1">{product.model}</td>
                       <td className="px-2 py-1">
                         {product.image ? (
                               <img
@@ -886,6 +944,56 @@ function CreateQuotation() {
               isLoading={productsLoading}
             />
             <p className="text-xs text-gray-500 mt-1">Selected: {relatedProducts.length}/5</p>
+            {relatedProducts.length > 0 && (
+              <table className="w-full mt-4 border rounded">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="px-2 py-1 text-left">S No.</th>
+                    <th className="px-2 py-1 text-left">Image</th>
+                    <th className="px-2 py-1 text-left">Model</th>
+                    <th className="px-2 py-1 text-left">Specification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatedProducts.map((product, idx) => {
+                    return (
+                      <tr key={product.value} className="border-b border-grey">
+                        <td className="px-2 py-1">{idx + 1}</td>
+                        <td className="px-2 py-1">
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt="Product"
+                              className="w-12 h-12 object-cover rounded border"
+                            />
+                          ) : (
+                            <span className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-400">
+                              N/A
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1">{product.model}</td>
+                        <td className="px-2 py-1">
+                          <textarea
+                            className="w-full border rounded px-2 py-1"
+                            rows={2}
+                            value={
+                              (editedRelatedSpecs[product.value] ?? (product.specification || ""))
+                            }
+                            onChange={e =>
+                              setEditedRelatedSpecs(prev => ({
+                                ...prev,
+                                [product.value]: e.target.value
+                              }))
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -903,6 +1011,56 @@ function CreateQuotation() {
               isLoading={productsLoading}
             />
             <p className="text-xs text-gray-500 mt-1">Selected: {suggestedProducts.length}/5</p>
+            {suggestedProducts.length > 0 && (
+              <table className="w-full mt-4 border rounded">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="px-2 py-1 text-left">S No.</th>
+                    <th className="px-2 py-1 text-left">Image</th>
+                    <th className="px-2 py-1 text-left">Model</th>
+                    <th className="px-2 py-1 text-left">Specification</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {suggestedProducts.map((product, idx) => {
+                    return (
+                      <tr key={product.value} className="border-b border-grey">
+                        <td className="px-2 py-1">{idx + 1}</td>
+                        <td className="px-2 py-1">
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt="Product"
+                              className="w-12 h-12 object-cover rounded border"
+                            />
+                          ) : (
+                            <span className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-400">
+                              N/A
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1">{product.model}</td>
+                        <td className="px-2 py-1">
+                          <textarea
+                            className="w-full border rounded px-2 py-1"
+                            rows={2}
+                            value={
+                              (editedSuggestedSpecs[product.value] ?? (product.specification || ""))
+                            }
+                            onChange={e =>
+                              setEditedSuggestedSpecs(prev => ({
+                                ...prev,
+                                [product.value]: e.target.value
+                              }))
+                            }
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -948,17 +1106,42 @@ function CreateQuotation() {
             />
             <p className="text-xs text-gray-500 mt-2">Add your company signature, contact details, etc. here.</p>
           </div>
-          <div className="flex items-center mb-4">
-            <input
-              id="add-gst-checkbox"
-              type="checkbox"
-              checked={addGst}
-              onChange={e => setAddGst(e.target.checked)}
-              className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-            />
-            <label htmlFor="add-gst-checkbox" className="ml-2 block text-sm text-gray-700">
-              Add GST 20%
-            </label>
+          <div className="space-y-4">
+            <div className="flex items-center mb-4">
+              <input
+                id="add-gst-checkbox"
+                type="checkbox"
+                checked={addGst}
+                onChange={e => setAddGst(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+              />
+              <label htmlFor="add-gst-checkbox" className="ml-2 block text-sm text-gray-700">
+                Add GST
+              </label>
+            </div>
+            {addGst && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  GST Percentage
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={gstPercentage}
+                    onChange={(e) => setGstPercentage(e.target.value)}
+                    className="w-32 border rounded-md px-3 py-2"
+                    placeholder="20"
+                  />
+                  <span className="text-gray-500">%</span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the GST percentage to be applied to the quotation
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

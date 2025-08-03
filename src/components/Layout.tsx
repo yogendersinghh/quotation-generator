@@ -17,13 +17,15 @@ function Layout() {
     { name: 'Customers Info', href: '/customers', icon: UsersIcon, roles: ['admin', 'manager'] },
     { name: 'Create Quotations', href: '/quotations', icon: FileText, roles: ['admin', 'manager'] },
     { name: 'Users', href: '/users', icon: UsersIcon, roles: ['admin'] },
-    { name: 'Default Formal Text', href: '/default-formal-text', icon: FileText, roles: ['admin', 'manager'] },
+    { name: 'Default Formal Text', href: '/default-formal-text', icon: FileText, roles: ['admin'] },
   ];
 
   // Filter navigation based on user role
   const navigation = allNavigation.filter(item => {
     if (!user?.role) return false;
-    return item.roles.includes(user.role);
+    const userRole = user.role.toLowerCase().trim();
+    const hasAccess = item.roles.some(role => role.toLowerCase().trim() === userRole);
+    return hasAccess;
   });
 
   return (

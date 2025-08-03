@@ -90,7 +90,14 @@ function App() {
             <Route path="models" element={<Models />} />
             <Route path="quotations/create" element={<CreateQuotation />} />
             <Route path="quotations/edit/:id" element={<CreateQuotation />} />
-            <Route path="default-formal-text" element={<DefaultFormalText />} />
+            <Route 
+              path="default-formal-text" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']} fallbackPath="/products">
+                  <DefaultFormalText />
+                </ProtectedRoute>
+              } 
+            />
           </Route>
         </Routes>
       </AuthProvider>

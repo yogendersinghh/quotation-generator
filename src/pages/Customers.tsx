@@ -176,8 +176,7 @@ function Customers() {
 
   // Handlers
   const handleAddCustomer = useCallback(() => {
-    setEditingCustomer(null); // Ensure no initial data for new client
-    setIsFormOpen(true);
+    setShowAddCustomerModal(true);
   }, []);
 
   const handleEditCustomer = useCallback(async (customer: any) => {

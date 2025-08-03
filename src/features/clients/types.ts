@@ -16,6 +16,7 @@ export type Client = {
   PIN?: string;
   phone: string[];
   companyName?: string;
+  companyCode?: string;
   createdBy?: CreatedBy;
   createdAt: string;
   updatedAt: string;
@@ -46,6 +47,7 @@ export type CreateClientPayload = {
   PIN?: string;
   phone: string[];
   companyName?: string;
+  companyCode?: string;
 };
 
 export type CreateClientResponse = {

@@ -18,6 +18,10 @@ function Quotations() {
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(
     null
   );
+  const [showUpdateStatusModal, setShowUpdateStatusModal] = useState(false);
+  const [selectedQuotationForUpdate, setSelectedQuotationForUpdate] = useState<Quotation | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const CMS_BASE_URL = import.meta.env.VITE_CMS_BASE_URL;
 
@@ -88,6 +92,32 @@ function Quotations() {
     }
   };
 
+  const handleUpdateStatus = (quotation: Quotation) => {
+    setSelectedQuotationForUpdate(quotation);
+    setSelectedStatus(quotation.converted || "");
+    setShowUpdateStatusModal(true);
+    setActionDropdownOpen(null);
+  };
+
+  const confirmUpdateStatus = async () => {
+    if (!selectedQuotationForUpdate || !selectedStatus) return;
+    
+    setIsUpdatingStatus(true);
+    try {
+      await apiClient.post(`/api/quotations/${selectedQuotationForUpdate._id}/converted`, {
+        converted: selectedStatus
+      });
+      setShowUpdateStatusModal(false);
+      setSelectedQuotationForUpdate(null);
+      setSelectedStatus("");
+      fetchQuotations();
+    } catch (err) {
+      alert("Failed to update quotation status.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const handleActionClick = (quotationId: string) => {
     setActionDropdownOpen(
       actionDropdownOpen === quotationId ? null : quotationId
@@ -114,6 +144,18 @@ function Quotations() {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  // Format status display function
+  const formatStatusDisplay = (status: string) => {
+    console.log("🚀 ~ formatStatusDisplay ~ status:", status)
+    if (!status) return "-";
+    
+    if (status === "under_development") {
+      return "UNDER DISCUSSION";
+    }
+    
+    return status.replace("_", " ").toUpperCase();
   };
 
   // Close dropdown when clicking outside
@@ -277,9 +319,7 @@ function Quotations() {
                           q.status
                         )}`}
                       >
-                        {q.status
-                          ? q.status.replace("_", " ").toUpperCase()
-                          : "-"}
+                        {formatStatusDisplay(q.status)}
                       </span>
                     </td>
                     <td className="px-2 sm:px-6 py-5 whitespace-nowrap text-sm text-gray-500">
@@ -333,6 +373,16 @@ function Quotations() {
                                 <Edit2 className="h-4 w-4 mr-2" />
                                 Edit
                               </button>
+                              <button
+                                onClick={() => {
+                                  handleUpdateStatus(q);
+                                }}
+                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                role="menuitem"
+                              >
+                                <Edit2 className="h-4 w-4 mr-2" />
+                                Update Status
+                              </button>
                               {/* <button
                                 onClick={() => {
                                   handleDelete(q._id);
@@ -377,6 +427,57 @@ function Quotations() {
                     onClick={confirmDelete}
                   >
                     Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Update Status Modal */}
+          {showUpdateStatusModal && selectedQuotationForUpdate && (
+            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
+              <div className="bg-white rounded-lg shadow-lg p-8 max-w-sm w-full">
+                <h3 className="text-lg font-semibold mb-4">
+                  Update Quotation Status
+                </h3>
+                <p className="mb-4 text-sm text-gray-600">
+                  Update the status for quotation: <strong>{selectedQuotationForUpdate.title}</strong>
+                </p>
+                <div className="mb-6">
+                  <label htmlFor="status-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    id="status-select"
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isUpdatingStatus}
+                  >
+                    <option value="">Select Status</option>
+                    <option value="Under Development">Under Discussion</option>
+                    <option value="Booked">Booked</option>
+                    <option value="Lost">Lost</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-4">
+                  <button
+                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                    onClick={() => {
+                      setShowUpdateStatusModal(false);
+                      setSelectedQuotationForUpdate(null);
+                      setSelectedStatus("");
+                    }}
+                    disabled={isUpdatingStatus}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                    onClick={confirmUpdateStatus}
+                    disabled={!selectedStatus || isUpdatingStatus}
+                  >
+                    {isUpdatingStatus ? "Updating..." : "Update Status"}
                   </button>
                 </div>
               </div>

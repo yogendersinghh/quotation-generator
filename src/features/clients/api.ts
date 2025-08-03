@@ -6,6 +6,7 @@ const CLIENTS_ENDPOINT = '/api/clients';
 // New type for the new API
 export interface CreateCompanyWithUsersPayload {
   companyName: string;
+  companyCode: string;
   address: string;
   place: string;
   city: string;
