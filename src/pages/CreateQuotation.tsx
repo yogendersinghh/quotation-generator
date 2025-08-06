@@ -118,6 +118,9 @@ function CreateQuotation() {
   // GST option for 5th step
   const [addGst, setAddGst] = useState(false);
   const [gstPercentage, setGstPercentage] = useState("20");
+  
+  // Loading state for API processing
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Enhancement: Display options for product info
   const [displayOptions, setDisplayOptions] = useState<{
@@ -401,6 +404,8 @@ function CreateQuotation() {
   // Generate quotation and store data
   const handleGeneratePDF = async () => {
     try {
+      setIsGenerating(true);
+      
       // Get authentication token
       const token = tokenStorage.getToken();
       if (!token) {
@@ -408,18 +413,10 @@ function CreateQuotation() {
         return;
       }
 
-      // Validate mandatory fields
+      // Validate mandatory fields - only title and customer are required
       const mandatoryFields = {
         title: title?.trim(),
         customer: customer?.value,
-        subject: subject?.trim(),
-        formalMessage: formalMessage?.trim(),
-        products: productRows.length > 0,
-        notes: notes?.trim(),
-        billing: billing?.trim(),
-        supply: supply?.trim(),
-        ic: ic?.trim(),
-        tnc: tnc?.trim(),
       };
 
       const missingFields = Object.entries(mandatoryFields)
@@ -427,7 +424,14 @@ function CreateQuotation() {
         .map(([key]) => key);
 
       if (missingFields.length > 0) {
-        alert(`Please fill in all mandatory fields: ${missingFields.join(', ')}`);
+        const fieldNames = missingFields.map(field => {
+          switch(field) {
+            case 'title': return 'Quotation Title';
+            case 'customer': return 'Customer';
+            default: return field;
+          }
+        });
+        alert(`Please fill in all mandatory fields: ${fieldNames.join(', ')}`);
         return;
       }
 
@@ -540,6 +544,8 @@ function CreateQuotation() {
         console.error("Error saving quotation:", err);
         alert(`Error saving quotation: ${err.message || 'An unexpected error occurred. Please try again.'}`);
       }
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -573,7 +579,7 @@ function CreateQuotation() {
             <div
               key={s}
               className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                step === s ? "bg-indigo-600" : "bg-gray-300"
+                step === s ? "bg-[#F7931E]" : "bg-gray-300"
               }`}
             >
               {s}
@@ -585,9 +591,14 @@ function CreateQuotation() {
       {/* Step 1 */}
       {step === 1 && (
         <div className="space-y-6">
+          <div className="mb-4 p-3 bg-[#F7931E]/10 border border-[#F7931E]/30 rounded-md">
+            <p className="text-sm text-[#F7931E]">
+              <span className="text-[#F7931E]">*</span> indicates mandatory fields. Only Quotation Title and Customer are required.
+            </p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quotation Title
+              Quotation Title <span className="text-[#F7931E]">*</span>
             </label>
             <input
               type="text"
@@ -598,7 +609,7 @@ function CreateQuotation() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Customer
+              Customer <span className="text-[#F7931E]">*</span>
             </label>
             <Select<CustomerOption, false>
               options={customerOptions}
@@ -1164,10 +1175,19 @@ function CreateQuotation() {
         ) : (
           <button
             onClick={handleGeneratePDF}
-            className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors"
-            title=""
+            disabled={isGenerating}
+            className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <CheckCircle2 className="w-4 h-4 mr-2" /> Generate Quotation
+            {isGenerating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Generating...
+              </>
+            ) : (
+              <>
+                Generate Quotation
+              </>
+            )}
           </button>
         )}
       </div>

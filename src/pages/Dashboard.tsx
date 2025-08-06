@@ -840,7 +840,7 @@ function Dashboard() {
                     disabled={quotationsLoading}
                     className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">All Statuses</option>
+                    <option value="">All Status</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
@@ -865,7 +865,7 @@ function Dashboard() {
                     disabled={quotationsLoading}
                     className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">All Statuses</option>
+                    <option value="">All Status</option>
                     <option value="Under Development">Under Discussion</option>
                     <option value="Booked">Booked</option>
                     <option value="Lost">Lost</option>
