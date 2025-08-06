@@ -418,12 +418,9 @@ function Products() {
     console.log(productTitle,"++++++=", productModel, productPrice, productWarranty, selectedCategories)
     if (
       !productTitle.trim() ||
-      !productModel ||
-      !productPrice ||
-      !productWarranty ||
       selectedCategories.length === 0
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please fill in all required fields (Product Title and Category are mandatory)");
       return;
     }
 
@@ -431,10 +428,10 @@ function Products() {
     const productData: any = {
       productImage: productImageFilename || "",
       title: productTitle.trim(),
-      model: productModel.trim(),
+      model: productModel.trim() || "",
       features: productFeatures,
-      price: parseFloat(productPrice),
-      warranty: productWarranty.trim(),
+      price: productPrice ? parseFloat(productPrice) : 0,
+      warranty: productWarranty.trim() || "",
       categories: selectedCategories,
       notes: notes.trim(),
       description: description.trim(),
@@ -513,21 +510,19 @@ function Products() {
     if (
       !editingProduct ||
       !productTitle.trim() ||
-      !productModel ||
-      !productPrice ||
-      !productWarranty
+      selectedCategories.length === 0
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please fill in all required fields (Product Title and Category are mandatory)");
       return;
     }
 
     const productData: any = {
       productImage: productImageFilename || "",
       title: productTitle.trim(),
-      model: productModel.trim(),
+      model: productModel.trim() || "",
       features: productFeatures,
-      price: parseFloat(productPrice),
-      warranty: productWarranty.trim(),
+      price: productPrice ? parseFloat(productPrice) : 0,
+      warranty: productWarranty.trim() || "",
       categories: selectedCategories,
       notes: notes.trim(),
       description: description.trim(),

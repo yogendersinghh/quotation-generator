@@ -98,14 +98,14 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
   // Only use the new API for submission
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Basic validation
-    if (!form.companyName || !form.address || !form.city || !form.state || !form.PIN) {
-      toast.error('Please fill all company fields.');
+    // Basic validation - only required fields
+    if (!form.companyName || !form.companyCode) {
+      toast.error('Please fill all required company fields (Company Name and Company Code).');
       return;
     }
     for (const c of form.customers) {
-      if (!c.name || !c.position) {
-        toast.error('Please fill all customer name and position fields.');
+      if (!c.name) {
+        toast.error('Please fill all customer name fields.');
         return;
       }
       if (c.email.length === 0 || c.email.some((em) => !em.trim() || !validateEmail(em))) {
@@ -188,7 +188,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Company Code</label>
+              <label className="block text-sm font-medium text-gray-700">Company Code <span className="text-red-500">*</span></label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Briefcase className="h-5 w-5 text-gray-400" />
@@ -200,11 +200,12 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                   onChange={handleCompanyChange}
                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                   placeholder="COMP001"
+                  required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Address <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700">Address</label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <MapPin className="h-5 w-5 text-gray-400" />
@@ -216,12 +217,11 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                   onChange={handleCompanyChange}
                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                   placeholder="123 Main St"
-                  required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Place <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700">Place</label>
               <input
                 type="text"
                 name="place"
@@ -229,11 +229,10 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                 onChange={handleCompanyChange}
                 className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="Area/Locality"
-                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">City <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700">City</label>
               <input
                 type="text"
                 name="city"
@@ -241,11 +240,10 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                 onChange={handleCompanyChange}
                 className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="City"
-                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">State <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700">State</label>
               <input
                 type="text"
                 name="state"
@@ -253,11 +251,10 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                 onChange={handleCompanyChange}
                 className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="State"
-                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">PIN <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700">PIN</label>
               <input
                 type="text"
                 name="PIN"
@@ -265,7 +262,6 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                 onChange={handleCompanyChange}
                 className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
                 placeholder="PIN Code"
-                required
               />
             </div>
           </div>
@@ -302,7 +298,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Position <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-gray-700">Position</label>
                     <div className="mt-1 relative rounded-md shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Briefcase className="h-5 w-5 text-gray-400" />
@@ -313,7 +309,6 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                         onChange={e => handleCustomerChange(idx, 'position', e.target.value)}
                         className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
                         placeholder="Position"
-                        required
                       />
                     </div>
                   </div>

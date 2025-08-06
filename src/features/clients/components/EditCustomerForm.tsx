@@ -13,6 +13,7 @@ interface EditCustomerFormProps {
   };
   companyData?: {
     companyName?: string;
+    companyCode?: string;
     address?: string;
     place?: string;
     city?: string;
@@ -27,6 +28,16 @@ export const EditCustomerForm: React.FC<EditCustomerFormProps> = ({ initialData,
   const [position, setPosition] = useState(initialData.position || '');
   const [emails, setEmails] = useState<string[]>(initialData.email && initialData.email.length > 0 ? initialData.email : ['']);
   const [phones, setPhones] = useState<string[]>(initialData.phone && initialData.phone.length > 0 ? initialData.phone : ['']);
+  
+  // Company fields state
+  const [companyName, setCompanyName] = useState(companyData?.companyName || '');
+  const [companyCode, setCompanyCode] = useState(companyData?.companyCode || '');
+  const [address, setAddress] = useState(companyData?.address || '');
+  const [place, setPlace] = useState(companyData?.place || '');
+  const [city, setCity] = useState(companyData?.city || '');
+  const [state, setState] = useState(companyData?.state || '');
+  const [pin, setPin] = useState(companyData?.PIN || '');
+  
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
 
@@ -57,8 +68,12 @@ export const EditCustomerForm: React.FC<EditCustomerFormProps> = ({ initialData,
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !position) {
-      alert('Name and position are required.');
+    if (!companyName || !companyCode) {
+      alert('Company Name and Company Code are required.');
+      return;
+    }
+    if (!name) {
+      alert('Name is required.');
       return;
     }
     if (emails.length === 0 || emails.some((em) => !em.trim() || !validateEmail(em))) {
@@ -76,8 +91,14 @@ export const EditCustomerForm: React.FC<EditCustomerFormProps> = ({ initialData,
         position,
         email: emails,
         phone: phones,
-        // Optionally include company fields if you want to allow editing them here
-        ...(companyData || {})
+        // Include company fields
+        companyName,
+        companyCode,
+        address,
+        place,
+        city,
+        state,
+        PIN: pin,
       });
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       onClose();
@@ -98,37 +119,119 @@ export const EditCustomerForm: React.FC<EditCustomerFormProps> = ({ initialData,
           </button>
         </div>
         <form onSubmit={onSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Name *</label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
+          {/* Company Fields */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Company Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Company Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                  placeholder="Contact Name"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="Company Name"
                   required
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Position *</label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Briefcase className="h-5 w-5 text-gray-400" />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Company Code <span className="text-red-500">*</span></label>
                 <input
                   type="text"
-                  value={position}
-                  onChange={e => setPosition(e.target.value)}
-                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
-                  placeholder="Position"
+                  value={companyCode}
+                  onChange={e => setCompanyCode(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="Company Code"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Address</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="Address"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Place</label>
+                <input
+                  type="text"
+                  value={place}
+                  onChange={e => setPlace(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="Place"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">City</label>
+                <input
+                  type="text"
+                  value={city}
+                  onChange={e => setCity(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="City"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">State</label>
+                <input
+                  type="text"
+                  value={state}
+                  onChange={e => setState(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="State"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">PIN</label>
+                <input
+                  type="text"
+                  value={pin}
+                  onChange={e => setPin(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                  placeholder="PIN Code"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Contact Fields */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Name <span className="text-red-500">*</span></label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                    placeholder="Contact Name"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Position</label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Briefcase className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={position}
+                    onChange={e => setPosition(e.target.value)}
+                    className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                    placeholder="Position"
+                  />
+                </div>
               </div>
             </div>
           </div>

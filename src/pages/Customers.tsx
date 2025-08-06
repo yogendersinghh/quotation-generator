@@ -196,6 +196,7 @@ function Customers() {
       setEditingCustomer(contact);
       setEditingCompany({
         companyName: data.companyName,
+        companyCode: data.companyCode,
         address: data.address,
         place: data.place,
         city: data.city,
