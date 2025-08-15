@@ -14,6 +14,7 @@ interface EditCustomerFormProps {
   companyData?: {
     companyName?: string;
     companyCode?: string;
+    companyStage?: string;
     address?: string;
     place?: string;
     city?: string;
@@ -32,6 +33,7 @@ export const EditCustomerForm: React.FC<EditCustomerFormProps> = ({ initialData,
   // Company fields state
   const [companyName, setCompanyName] = useState(companyData?.companyName || '');
   const [companyCode, setCompanyCode] = useState(companyData?.companyCode || '');
+  const [companyStage, setCompanyStage] = useState(companyData?.companyStage || 'foundation');
   const [address, setAddress] = useState(companyData?.address || '');
   const [place, setPlace] = useState(companyData?.place || '');
   const [city, setCity] = useState(companyData?.city || '');
@@ -94,6 +96,7 @@ export const EditCustomerForm: React.FC<EditCustomerFormProps> = ({ initialData,
         // Include company fields
         companyName,
         companyCode,
+        companyStage,
         address,
         place,
         city,
@@ -144,6 +147,20 @@ export const EditCustomerForm: React.FC<EditCustomerFormProps> = ({ initialData,
                   placeholder="Company Code"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Company Stage</label>
+                <select
+                  value={companyStage}
+                  onChange={e => setCompanyStage(e.target.value)}
+                  className="focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md p-3"
+                >
+                  <option value="foundation">Foundation</option>
+                  <option value="building">Building</option>
+                  <option value="running">Running</option>
+                  <option value="finished">Finished</option>
+                  <option value="closed">Closed</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Address</label>

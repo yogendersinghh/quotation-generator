@@ -39,6 +39,7 @@ interface ProductRow {
   product: ProductOption;
   qty: string;
   unit: string;
+  price: string;
 }
 
 export interface Product {
@@ -198,13 +199,40 @@ function CreateQuotation() {
     })
   );
 
-  // Update useProducts to filter by selectedCategory
+  // Update useProducts to filter by selectedCategory for main product selection
   const { data: productsData, isLoading: productsLoading } = useProducts({
     limit: 1000,
     ...(selectedCategory ? { categories: selectedCategory } : {}),
   });
-  // --- Update productOptions mapping ---
+  
+  // Separate query for all products (used for related and suggested products)
+  const { data: allProductsData, isLoading: allProductsLoading } = useProducts({
+    limit: 1000,
+  });
+  
+  // --- Update productOptions mapping (filtered by category for main selection) ---
   const productOptions: ProductOption[] = (productsData?.products || []).map(
+    (product) => ({
+      value: product._id,
+      label: product.title,
+      image: product.productImage ? `${CMS_BASE_URL}/public/products/${product.productImage}` : undefined,
+      description: product.description || "",
+      notes: product.notes || "",
+      make: isNameObject(product.make) ? product.make.name : product.make || "",
+      model: isNameObject(product.model)
+        ? product.model.name
+        : product.model || "",
+      price: product.price,
+      warranty: product.warranty || "",
+      quality: product.quality || "",
+      specification: product.specification || "",
+      termsAndCondition: product.termsAndCondition || "",
+      features: Array.isArray(product.features) ? product.features : [],
+    })
+  );
+  
+  // All products options (for related and suggested products)
+  const allProductOptions: ProductOption[] = (allProductsData?.products || []).map(
     (product) => ({
       value: product._id,
       label: product.title,
@@ -325,6 +353,7 @@ function CreateQuotation() {
           },
           qty: p.quantity?.toString() || "",
           unit: p.unit || "",
+          price: p.product.price?.toString() || "0",
         };
       })
     );
@@ -332,20 +361,31 @@ function CreateQuotation() {
 
   // Map fetched related and suggested products
   useEffect(() => {
-    if (!id || !productsData) return;
+    if (!id || !allProductsData) return;
 
     // Map related products
     const related = fetchedRelatedProducts
-      .map((productId) => productOptions.find((opt) => opt.value === productId))
+      .map((productId) => allProductOptions.find((opt) => opt.value === productId))
       .filter(Boolean);
     setRelatedProducts(related as ProductOption[]);
 
     // Map suggested products
     const suggested = fetchedSuggestedProducts
-      .map((productId) => productOptions.find((opt) => opt.value === productId))
+      .map((productId) => allProductOptions.find((opt) => opt.value === productId))
       .filter(Boolean);
     setSuggestedProducts(suggested as ProductOption[]);
-  }, [id, productsData, fetchedRelatedProducts, fetchedSuggestedProducts]);
+  }, [id, allProductsData, fetchedRelatedProducts, fetchedSuggestedProducts]);
+
+  // Auto-calculate machine installation total when quantity or price changes
+  useEffect(() => {
+    const qty = parseFloat(machineInstall.qty) || 0;
+    const price = parseFloat(machineInstall.price) || 0;
+    const total = qty * price;
+    setMachineInstall(prev => ({
+      ...prev,
+      total: total.toString()
+    }));
+  }, [machineInstall.qty, machineInstall.price]);
 
   // Don't render anything until auth is initialized
   if (!isInitialized) {
@@ -373,13 +413,13 @@ function CreateQuotation() {
         const existing = productRows.find(
           (row) => row.product.value === opt.value
         );
-        return existing || { product: opt, qty: "", unit: "" };
+        return existing || { product: opt, qty: "", unit: "", price: opt.price?.toString() || "0" };
       })
     );
   };
   const handleProductRowChange = (
     idx: number,
-    field: "qty" | "unit",
+    field: "qty" | "unit" | "price",
     value: string
   ) => {
     setProductRows((rows) =>
@@ -392,12 +432,12 @@ function CreateQuotation() {
     let total = 0;
     productRows.forEach((row) => {
       const qty = parseFloat(row.qty) || 0;
-      // For demo, assume each product is 10000 (replace with real price lookup)
-      total += qty * 10000;
+      const price = parseFloat(row.price) || 0;
+      total += qty * price;
     });
-    const miQty = parseFloat(machineInstall.qty) || 0;
-    const miPrice = parseFloat(machineInstall.price) || 0;
-    total += miQty * miPrice;
+    // Use the calculated machine installation total
+    const miTotal = parseFloat(machineInstall.total) || 0;
+    total += miTotal;
     return total;
   };
 
@@ -437,7 +477,7 @@ function CreateQuotation() {
 
       // Prepare products data
       const products = productRows.map((row) => {
-        const price = typeof row.product.price === "number" ? row.product.price : 0;
+        const price = parseFloat(row.price) || 0;
         const qty = parseFloat(row.qty) || 0;
         return {
           product: row.product.value,
@@ -697,84 +737,104 @@ function CreateQuotation() {
             />
           </div>
           {productRows.length > 0 && (
-            <table className="w-full mt-4 border rounded">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="px-2 py-1 text-left">Serial No.</th>
-                  <th className="px-2 py-1 text-left">Model</th>
-                  <th className="px-2 py-1 text-left">Image</th>
-                  <th className="px-2 py-1 text-left">Specification</th>
-                  <th className="px-2 py-1 text-left">Qty</th>
-                  <th className="px-2 py-1 text-left">Unit</th>
-                  <th className="px-2 py-1 text-left">Price</th>
-                  <th className="px-2 py-1 text-left">Total Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {productRows.map((row, idx) => {
-                  const product = row.product;
-                  const price = typeof product.price === "number" ? product.price : 0;
-                  const qty = parseFloat(row.qty) || 0;
-                  const total = price * qty;
-                  return (
-                    <tr key={product.value} className="border-b border-grey">
-                      <td className="px-2 py-1">{idx + 1}</td>
-                      <td className="px-2 py-1">{product.model}</td>
-                      <td className="px-2 py-1">
-                        {product.image ? (
-                              <img
-                            src={product.image}
-                            alt="Product"
-                            className="w-12 h-12 object-cover rounded border"
+            <div>
+              <table className="w-full mt-4 border rounded">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="px-2 py-1 text-left">Serial No.</th>
+                    <th className="px-2 py-1 text-left">Model</th>
+                    <th className="px-2 py-1 text-left">Image</th>
+                    <th className="px-2 py-1 text-left">Specification</th>
+                    <th className="px-2 py-1 text-left">Qty</th>
+                    <th className="px-2 py-1 text-left">Unit</th>
+                    <th className="px-2 py-1 text-left">Price</th>
+                    <th className="px-2 py-1 text-left">Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productRows.map((row, idx) => {
+                    const product = row.product;
+                    const price = parseFloat(row.price) || 0;
+                    const qty = parseFloat(row.qty) || 0;
+                    const total = price * qty;
+                    return (
+                      <tr key={product.value} className="border-b border-grey">
+                        <td className="px-2 py-1">{idx + 1}</td>
+                        <td className="px-2 py-1">{product.model}</td>
+                        <td className="px-2 py-1">
+                          {product.image ? (
+                                <img
+                              src={product.image}
+                              alt="Product"
+                              className="w-12 h-12 object-cover rounded border"
+                            />
+                          ) : (
+                            <span className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-400">
+                              N/A
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-1">
+                          <textarea
+                            className="w-full border rounded px-2 py-1"
+                            rows={2}
+                            value={
+                              (editedOptionals[product.value]?.specification ?? (product.specification || ""))
+                            }
+                            onChange={e =>
+                              setEditedOptionals(prev => ({
+                                ...prev,
+                                [product.value]: {
+                                  ...prev[product.value],
+                                  specification: e.target.value
+                                }
+                              }))
+                            }
                           />
-                        ) : (
-                          <span className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center text-xs text-gray-400">
-                            N/A
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-2 py-1">
-                        <textarea
-                          className="w-full border rounded px-2 py-1"
-                          rows={2}
-                          value={
-                            (editedOptionals[product.value]?.specification ?? (product.specification || ""))
-                          }
-                          onChange={e =>
-                            setEditedOptionals(prev => ({
-                              ...prev,
-                              [product.value]: {
-                                ...prev[product.value],
-                                specification: e.target.value
-                              }
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="px-2 py-1">
-                        <input
-                          type="number"
-                          min="1"
-                          value={row.qty}
-                          onChange={e => handleProductRowChange(idx, "qty", e.target.value)}
-                          className="w-full border rounded px-2 py-1"
-                        />
-                      </td>
-                      <td className="px-2 py-1">
-                        <input
-                          type="text"
-                          value={row.unit}
-                          onChange={e => handleProductRowChange(idx, "unit", e.target.value)}
-                          className="w-full border rounded px-2 py-1"
-                        />
-                      </td>
-                      <td className="px-2 py-1">₹{price.toLocaleString()}</td>
-                      <td className="px-2 py-1">₹{total.toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="number"
+                            min="1"
+                            value={row.qty}
+                            onChange={e => handleProductRowChange(idx, "qty", e.target.value)}
+                            className="w-full border rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="text"
+                            value={row.unit}
+                            onChange={e => handleProductRowChange(idx, "unit", e.target.value)}
+                            className="w-full border rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={row.price}
+                            onChange={e => handleProductRowChange(idx, "price", e.target.value)}
+                            className="w-full border rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-2 py-1">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="mt-4 text-right">
+                <div className="text-lg font-semibold">
+                  Subtotal: ₹{productRows.reduce((sum, row) => {
+                    const qty = parseFloat(row.qty) || 0;
+                    const price = parseFloat(row.price) || 0;
+                    return sum + (qty * price);
+                  }, 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
           )}
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -820,17 +880,11 @@ function CreateQuotation() {
                 className="w-[100%] border rounded px-2 py-1"
               />
               <input
-                type="number"
-                min="0"
+                type="text"
                 placeholder="Total"
-                value={machineInstall.total}
-                onChange={(e) =>
-                  setMachineInstall({
-                    ...machineInstall,
-                    total: e.target.value,
-                  })
-                }
-                className="w-[100%] border rounded px-2 py-1"
+                value={machineInstall.total ? `₹${parseFloat(machineInstall.total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""}
+                readOnly
+                className="w-[100%] border rounded px-2 py-1 bg-gray-50 cursor-not-allowed"
               />
             </div>
           </div>
@@ -841,7 +895,7 @@ function CreateQuotation() {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
+              General Notes
             </label>
             <CKEditor
               editor={ClassicEditor as any}
@@ -914,7 +968,7 @@ function CreateQuotation() {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Terms & Conditions
+              General  Terms & Conditions
             </label>
             <CKEditor
               editor={ClassicEditor as any}
@@ -945,14 +999,14 @@ function CreateQuotation() {
             </label>
             <Select<ProductOption, true>
               isMulti
-              options={productOptions}
+              options={allProductOptions}
               value={relatedProducts}
               onChange={(options) => {
                 const limitedOptions = (options as ProductOption[]).slice(0, 5);
                 setRelatedProducts(limitedOptions);
               }}
-              placeholder={productsLoading ? "Loading products..." : "Select related products (max 5)"}
-              isLoading={productsLoading}
+              placeholder={allProductsLoading ? "Loading products..." : "Select related products (max 5)"}
+              isLoading={allProductsLoading}
             />
             <p className="text-xs text-gray-500 mt-1">Selected: {relatedProducts.length}/5</p>
             {relatedProducts.length > 0 && (
@@ -1012,14 +1066,14 @@ function CreateQuotation() {
             </label>
             <Select<ProductOption, true>
               isMulti
-              options={productOptions}
+              options={allProductOptions}
               value={suggestedProducts}
               onChange={(options) => {
                 const limitedOptions = (options as ProductOption[]).slice(0, 5);
                 setSuggestedProducts(limitedOptions);
               }}
-              placeholder={productsLoading ? "Loading products..." : "Select suggested products (max 5)"}
-              isLoading={productsLoading}
+              placeholder={allProductsLoading ? "Loading products..." : "Select suggested products (max 5)"}
+              isLoading={allProductsLoading}
             />
             <p className="text-xs text-gray-500 mt-1">Selected: {suggestedProducts.length}/5</p>
             {suggestedProducts.length > 0 && (

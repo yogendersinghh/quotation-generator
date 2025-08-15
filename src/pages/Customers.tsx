@@ -53,7 +53,7 @@ function Customers() {
     return searchParams.get("search") || "";
   });
 
-  // State for customer form
+  // State for company formAdd New Customer
   const [isFormOpen, setIsFormOpen] = useState(false); // This will be used to control the form for editing/adding
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
@@ -63,8 +63,9 @@ function Customers() {
   const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(
     null
   );
-  const [companyNames, setCompanyNames] = useState<string[]>([]);
+  const [companyNames, setCompanyNames] = useState<Array<{companyName: string, companyCodes: string[]}>>([]);
   const [companyNameFilter, setCompanyNameFilter] = useState<string>("");
+  const [companyCodeFilter, setCompanyCodeFilter] = useState<string>("");
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
   // Function to update URL parameters
@@ -131,10 +132,10 @@ function Customers() {
     async function fetchCompanyNames() {
       try {
         const token = localStorage.getItem("token");
-        const names = await clientsApi.getCompanyNames(
+        const companies = await clientsApi.getCompanyNames(
           token ? token : undefined
         );
-        setCompanyNames(names);
+        setCompanyNames(companies);
       } catch (err) {
         setCompanyNames([]);
       }
@@ -165,6 +166,7 @@ function Customers() {
     sortOrder,
     search: debouncedSearchQuery,
     ...(companyNameFilter ? { companyName: companyNameFilter } : {}),
+    ...(companyCodeFilter ? { companyCode: companyCodeFilter } : {}),
   });
 
   // Use delete client hook
@@ -188,7 +190,7 @@ function Customers() {
         customer._id,
         token ? token : undefined
       );
-      // Find the specific customer/contact to edit
+      // Find the specific company/contact to edit
       const contact =
         data.customers && Array.isArray(data.customers)
           ? data.customers.find((c: any) => c._id === customer._id) || data
@@ -197,6 +199,7 @@ function Customers() {
       setEditingCompany({
         companyName: data.companyName,
         companyCode: data.companyCode,
+        companyStage: data.companyStage,
         address: data.address,
         place: data.place,
         city: data.city,
@@ -206,14 +209,14 @@ function Customers() {
     } catch (err) {
       setEditingCustomer(null);
       setEditingCompany(null);
-      alert("Failed to fetch customer details.");
+      alert("Failed to fetch company details.");
     } finally {
       setIsFetchingEdit(false);
       setActionDropdownOpen(null);
     }
   }, []);
 
-  const handleUpdateCustomer = useCallback(() => {
+  const handleUpdateCompany = useCallback(() => {
     // This function is now mostly handled by the ClientForm component
     // It only serves to close the modal for now
     setIsFormOpen(false);
@@ -236,7 +239,7 @@ function Customers() {
         onError: (err: any) => {
           console.error("Error deleting client:", err);
           toast.error(
-            err.response?.data?.message || "Failed to delete customer."
+            err.response?.data?.message || "Failed to delete company."
           );
         },
       });
@@ -288,6 +291,12 @@ function Customers() {
     setSearchQuery("");
   }, []);
 
+  const handleClearFilters = useCallback(() => {
+    setSearchQuery("");
+    setCompanyNameFilter("");
+    setCompanyCodeFilter("");
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -300,8 +309,8 @@ function Customers() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-red-500 text-center">
-          <h2 className="text-2xl font-bold mb-2">Error Loading Customers</h2>
-          <p>Failed to load customers. Please try again later.</p>
+          <h2 className="text-2xl font-bold mb-2">Error Loading Companies</h2>
+          <p>Failed to load companies. Please try again later.</p>
         </div>
       </div>
     );
@@ -310,27 +319,26 @@ function Customers() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Companies</h1>
         <button
           className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors"
           onClick={() => setShowAddCustomerModal(true)}
         >
-          Add Customer
+          Add Company
         </button>
       </div>
       {showAddCustomerModal && (
         <CreateClientForm onClose={() => setShowAddCustomerModal(false)} />
       )}
 
-      {/* Company Name Filter */}
-      {/* Search Filter */}
+      {/* Search and Filter Section */}
       <div className="bg-white p-6 rounded-lg shadow flex gap-6">
         <div className="flex-1">
         <SearchBar
           placeholder={
             clients.length === 0
-              ? "Add customers to enable search"
-              : "Search customers by name..."
+              ? "Add companies to enable search"
+              : "Search companies by name..."
           }
           onSearch={setSearchQuery}
           debounceMs={500}
@@ -345,7 +353,7 @@ function Customers() {
         )}
         </div>
         
-
+        {/* Company Name Filter */}
         <select
           id="companyNameFilter"
           value={companyNameFilter}
@@ -353,27 +361,44 @@ function Customers() {
           className="w-[240px] border border-gray-300 rounded px-3 py-2 text-sm"
         >
           <option value="">All Companies</option>
-          {companyNames.map((name) => (
-            <option key={name} value={name}>
-              {name}
+          {companyNames.map((company) => (
+            <option key={company.companyName} value={company.companyName}>
+              {company.companyName}
+            </option>
+          ))}
+        </select>
+
+        {/* Company Code Filter */}
+        <select
+          id="companyCodeFilter"
+          value={companyCodeFilter}
+          onChange={(e) => setCompanyCodeFilter(e.target.value)}
+          className="w-[240px] border border-gray-300 rounded px-3 py-2 text-sm"
+        >
+          <option value="">All Company Codes</option>
+          {companyNames.flatMap(company => 
+            company.companyCodes.map(code => ({ code, companyName: company.companyName }))
+          ).map(({ code, companyName }) => (
+            <option key={code} value={code}>
+              {code} - {companyName}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Conditional rendering for customer table or no results message in the content area */}
+      {/* Conditional rendering for company table or no results message in the content area */}
       {clients.length === 0 ? (
-        !debouncedSearchQuery ? (
-          // Case 1: No customers in the system AND no active search
+        !debouncedSearchQuery && !companyNameFilter && !companyCodeFilter ? (
+          // Case 1: No companies in the system AND no active search
           <div className="flex items-center justify-center">
             <div className="text-center bg-white p-8 rounded-lg shadow-md w-full">
               <UsersIcon className="w-24 h-24 text-[#F7931E] mx-auto mb-6 bg-[#F7931E] bg-opacity-10 p-4 rounded-full" />
               <h2 className="text-2xl font-bold mb-3 text-gray-800">
-                No Customers Added Yet
+                No Companies Added Yet
               </h2>
               <p className="text-gray-600 mb-6">
-                Start building your customer database by adding your first
-                customer.
+                Start building your company database by adding your first
+                company.
                 <br />
                 You can include their contact information and details.
               </p>
@@ -381,7 +406,7 @@ function Customers() {
                 className="bg-[#F7931E] hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center mx-auto transition-colors duration-200"
                 onClick={handleAddCustomer}
               >
-                <Plus className="mr-2" size={20} /> Add Your First Customer
+                <Plus className="mr-2" size={20} /> Add Your First Company
               </button>
             </div>
           </div>
@@ -391,18 +416,21 @@ function Customers() {
             <div className="text-center bg-white p-8 rounded-lg shadow-md w-full">
               <Search className="w-24 h-24 text-gray-400 mx-auto mb-6 bg-gray-50 p-4 rounded-full" />
               <h2 className="text-2xl font-bold mb-2 text-gray-800">
-                No Customers Found
+                No Companies Found
               </h2>
               <p className="text-gray-600 mb-6">
-                No customers found matching "{debouncedSearchQuery}". Try a
-                different search term or clear the search.
+                {debouncedSearchQuery && `No companies found matching "${debouncedSearchQuery}".`}
+                {companyNameFilter && `No companies found in "${companyNameFilter}".`}
+                {companyCodeFilter && `No companies found with code "${companyCodeFilter}".`}
+                {!debouncedSearchQuery && !companyNameFilter && !companyCodeFilter && "No companies found."}
+                Try different filters or clear all filters.
               </p>
               <button
-                onClick={handleClearSearch}
+                onClick={handleClearFilters}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-600 bg-indigo-100 hover:bg-indigo-200 transition-colors duration-200"
               >
                 <FilterX className="mr-2 h-4 w-4" />
-                Clear Search
+                Clear All Filters
               </button>
             </div>
           </div>
@@ -415,25 +443,25 @@ function Customers() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    Name
+                    Company Code
                   </th>
                   <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Company Name
                   </th>
                   <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    Email
+                    Contact Name
                   </th>
                   <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Position
                   </th>
                   <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Phone
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    Email
+                  </th>
+                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Created By
-                  </th>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    Address
-                  </th>
-                  <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                    Phone Number
                   </th>
                   <th className="px-2 sm:px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                     Actions
@@ -444,10 +472,24 @@ function Customers() {
                 {clients.map((client) => (
                   <tr key={client._id} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {client.name}
+                      {client.companyCode || "-"}
                     </td>
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {client.companyName || "-"}
+                    </td>
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {client.name}
+                    </td>
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {client.position}
+                    </td>
+                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(Array.isArray(client.phone)
+                        ? client.phone
+                        : String(client.phone).split(/[\,\s]+/)
+                      ).map((phone, idx) => (
+                        <div key={idx}>{phone}</div>
+                      ))}
                     </td>
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {(Array.isArray(client.email)
@@ -458,29 +500,14 @@ function Customers() {
                       ))}
                     </td>
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {client.position}
-                    </td>
-                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {client.createdBy ? client.createdBy.name : "N/A"}
-                    </td>
-                    <td
-                      className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                      dangerouslySetInnerHTML={{ __html: client.address }}
-                    ></td>
-                    <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(Array.isArray(client.phone)
-                        ? client.phone
-                        : String(client.phone).split(/[\,\s]+/)
-                      ).map((phone, idx) => (
-                        <div key={idx}>{phone}</div>
-                      ))}
                     </td>
                     <td className="px-2 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="relative dropdown-container">
                         <button
                           onClick={() => handleActionClick(client._id)}
                           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                          aria-label="Customer actions"
+                          aria-label="Company actions"
                         >
                           <MoreVertical className="h-5 w-5" />
                         </button>
@@ -488,20 +515,20 @@ function Customers() {
                         {actionDropdownOpen === client._id && (
                           <div className="absolute right-[24px] w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200 ring-1 ring-black ring-opacity-5">
                             <div className="py-1">
-                              <button
-                                onClick={() => handleEditCustomer(client)}
-                                className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
-                              >
-                                <Edit2 className="h-4 w-4 mr-3 text-indigo-500" />
-                                Edit Customer
-                              </button>
+                                                        <button
+                            onClick={() => handleEditCustomer(client)}
+                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
+                          >
+                            <Edit2 className="h-4 w-4 mr-3 text-indigo-500" />
+                            Edit Company
+                          </button>
                               <div className="border-t border-gray-100"></div>
                               <button
                                 onClick={() => handleDeleteCustomer(client)}
                                 className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:bg-red-50"
                               >
                                 <Trash2 className="h-4 w-4 mr-3 text-red-500" />
-                                Delete Customer
+                                Delete Company
                               </button>
                             </div>
                           </div>
@@ -542,14 +569,25 @@ function Customers() {
           {/* Results summary */}
           {pagination && (
             <div className="mt-4 text-center text-sm text-gray-600">
-              {debouncedSearchQuery ? (
-                <span>
-                  Showing {clients.length} of {pagination.total} results for "
-                  {debouncedSearchQuery}"
-                </span>
+              {debouncedSearchQuery || companyNameFilter || companyCodeFilter ? (
+                <div className="flex flex-col items-center gap-2">
+                  <span>
+                    Showing {clients.length} of {pagination.total} results
+                    {debouncedSearchQuery && ` for "${debouncedSearchQuery}"`}
+                    {companyNameFilter && ` in company "${companyNameFilter}"`}
+                    {companyCodeFilter && ` with code "${companyCodeFilter}"`}
+                  </span>
+                  <button
+                    onClick={handleClearFilters}
+                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-indigo-600 bg-indigo-100 hover:bg-indigo-200 transition-colors duration-200"
+                  >
+                    <FilterX className="mr-1 h-3 w-3" />
+                    Clear All Filters
+                  </button>
+                </div>
               ) : (
                 <span>
-                  Showing {clients.length} of {pagination.total} customers
+                  Showing {clients.length} of {pagination.total} companies
                 </span>
               )}
             </div>
@@ -557,13 +595,13 @@ function Customers() {
         </>
       )}
 
-      {/* Customer Form Modal */}
+      {/* Company Form Modal */}
       {isFormOpen &&
         (isFetchingEdit ? (
           <div className="fixed inset-0 flex items-center justify-center bg-gray-600 bg-opacity-50 z-50">
-            <div className="bg-white p-8 rounded shadow text-center">
-              Loading customer data...
-            </div>
+                      <div className="bg-white p-8 rounded shadow text-center">
+            Loading company data...
+          </div>
           </div>
         ) : (
           editingCustomer && (

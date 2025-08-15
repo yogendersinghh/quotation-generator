@@ -83,6 +83,9 @@ export type QuotationsFilters = {
   converted?: string;
   client?: string;
   companyName?: string;
+  companyCode?: string;
+  createdBy?: string;
+  companyStage?: string;
 };
 
 export type DashboardStats = {

@@ -7,6 +7,7 @@ const CLIENTS_ENDPOINT = '/api/clients';
 export interface CreateCompanyWithUsersPayload {
   companyName: string;
   companyCode: string;
+  companyStage: string;
   address: string;
   place: string;
   city: string;
@@ -28,6 +29,7 @@ export const clientsApi = {
     sortOrder?: 'asc' | 'desc';
     search?: string;
     companyName?: string;
+    companyCode?: string;
   }): Promise<ClientsResponse> => {
     const url = new URL(CLIENTS_ENDPOINT, apiClient.defaults.baseURL);
     if (params) {
@@ -128,13 +130,13 @@ export const clientsApi = {
     }
   },
 
-  getCompanyNames: async (token?: string): Promise<string[]> => {
+  getCompanyNames: async (token?: string): Promise<Array<{companyName: string, companyCodes: string[]}>> => {
     try {
       const headers: any = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const { data } = await apiClient.get('/api/clients/company-names', token ? { headers } : undefined);
-      // Assuming the API returns { companyNames: string[] }
-      return data.companyNames || [];
+      // API returns { companies: Array<{companyName: string, companyCodes: string[]}> }
+      return data.companies || [];
     } catch (error: any) {
       console.error('Company names API error:', {
         status: error.response?.status,
@@ -144,4 +146,6 @@ export const clientsApi = {
       throw error;
     }
   },
+
+
 }; 

@@ -794,11 +794,11 @@ function Products() {
           <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm font-sans">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Quality</th>
                 <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Image</th>
-                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Title</th>
-                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
-                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Specification</th>
                 <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Category</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Title</th>
+                <th className="px-2 sm:px-6 py-3 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Specification</th>
                 <th className="px-2 sm:px-6 py-3 text-sm text-gray-500 uppercase tracking-wider whitespace-nowrap">Price</th>
                 <th className="px-2 sm:px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
               </tr>
@@ -806,6 +806,9 @@ function Products() {
             <tbody className="bg-white divide-y divide-gray-200">
               {productsData.map((product) => (
                 <tr key={product._id} className="hover:bg-gray-50">
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">
+                    {product.quality || "N/A"}
+                  </td>
                   <td className="px-2 sm:px-6 py-3 whitespace-nowrap text-center">
                     {product.productImage ? (
                       <img
@@ -817,14 +820,13 @@ function Products() {
                       <span className="text-gray-400">No Image</span>
                     )}
                   </td>
-                  <td className="px-2 sm:px-6 py-3 whitespace-nowrap font-medium text-gray-900">{product.title}</td>
-                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.description}>{product.description}</td>
-                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.specification}>{product.specification}</td>
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">
                     {Array.isArray(product.categories)
                       ? product.categories.map(cat => typeof cat === 'object' && cat !== null ? (cat as any).name : cat).join(', ')
                       : product.categories}
                   </td>
+                  <td className="px-2 sm:px-6 py-3 whitespace-nowrap font-medium text-gray-900">{product.title}</td>
+                  <td className="px-2 sm:px-6 py-3 text-sm text-gray-500 max-w-xs truncate" title={product.specification}>{product.specification}</td>
                   <td className="px-2 sm:px-6 py-3 text-sm text-gray-500">{formatPrice(product.price)}</td>
                   <td className="px-2 sm:px-6 py-3 text-right text-sm font-medium">
                     <div className="relative action-dropdown">

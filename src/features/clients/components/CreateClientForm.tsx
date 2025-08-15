@@ -15,6 +15,7 @@ interface CustomerContact {
 interface CompanyFormState {
   companyName: string;
   companyCode: string;
+  companyStage: string;
   address: string;
   place: string;
   city: string;
@@ -34,6 +35,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
   const [form, setForm] = useState<CompanyFormState>({
     companyName: '',
     companyCode: '',
+    companyStage: 'foundation',
     address: '',
     place: '',
     city: '',
@@ -44,7 +46,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
   const queryClient = useQueryClient();
 
   // Company field handler
-  const handleCompanyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCompanyChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -121,6 +123,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
     const payload: CreateCompanyWithUsersPayload = {
       companyName: form.companyName,
       companyCode: form.companyCode,
+      companyStage: form.companyStage,
       address: form.address,
       place: form.place,
       city: form.city,
@@ -143,6 +146,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
       setForm({
         companyName: '',
         companyCode: '',
+        companyStage: 'foundation',
         address: '',
         place: '',
         city: '',
@@ -162,7 +166,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto !mt-[0px]">
       <div className="bg-white h-[80%] overflow-scroll rounded-lg shadow-xl p-8 w-full max-w-2xl mx-4 my-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Add New Customer</h2>
+          <h2 className="text-2xl font-bold">Add Company Detals</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={24} />
           </button>
@@ -202,6 +206,26 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
                   placeholder="COMP001"
                   required
                 />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Company Stage</label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Briefcase className="h-5 w-5 text-gray-400" />
+                </div>
+                                 <select
+                   name="companyStage"
+                   value={form.companyStage}
+                   onChange={handleCompanyChange}
+                   className="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md p-3"
+                 >
+                   <option value="foundation">Foundation</option>
+                   <option value="building">Building</option>
+                   <option value="running">Running</option>
+                   <option value="finished">Finished</option>
+                   <option value="closed">Closed</option>
+                 </select>
               </div>
             </div>
             <div>
@@ -268,7 +292,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
 
           {/* Customers Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-2">Customer Contacts</h3>
+            <h3 className="text-lg font-semibold mb-2">Company Contacts</h3>
             {form.customers.map((customer, idx) => (
               <div key={idx} className="border rounded-lg p-4 mb-4 relative bg-gray-50">
                 {form.customers.length > 1 && (
@@ -374,7 +398,7 @@ export const CreateClientForm = ({ onClose }: { onClose: () => void }) => {
               className="flex items-center gap-2 px-4 py-2 bg-[#F7931E] text-white rounded font-medium hover:bg-orange-600 transition-colors"
               onClick={addCustomer}
             >
-              <Plus size={18} /> Add More Customer
+              <Plus size={18} /> Add More Company Contact
             </button>
           </div>
 

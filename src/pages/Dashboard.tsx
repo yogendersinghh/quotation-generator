@@ -85,9 +85,38 @@ function Dashboard() {
   // Add state for new filters
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [selectedCompanyName, setSelectedCompanyName] = useState<string>("");
+  const [selectedCompanyCode, setSelectedCompanyCode] = useState<string>("");
+  // Add state for created by filter
+  const [selectedCreatedBy, setSelectedCreatedBy] = useState<string>("");
+  // Add state for company stage filter
+  const [selectedCompanyStage, setSelectedCompanyStage] = useState<string>("");
   // Fetch all clients and company names
   const { data: allClients = [], isLoading: clientsLoading } = useAllClients();
-  const { data: companyNames = [], isLoading: companyNamesLoading } = useCompanyNames();
+  const { data: companies = [], isLoading: companyNamesLoading } = useCompanyNames();
+  
+  // Extract company names and codes from the companies data
+  const companyNames = Array.isArray(companies) 
+    ? companies.map((company: any) => company.companyName).filter(Boolean)
+    : [];
+  const selectedCompany = Array.isArray(companies) 
+    ? companies.find((company: any) => company.companyName === selectedCompanyName)
+    : undefined;
+  
+  // Get company codes - if no company is selected, show all codes from all companies
+  const companyCodes = selectedCompanyName 
+    ? (selectedCompany?.companyCodes || [])
+    : Array.isArray(companies) 
+      ? companies.flatMap((company: any) => company.companyCodes || []).filter(Boolean)
+      : [];
+  
+  // Debug logging for companies data
+  console.log("Companies data debug:", {
+    companies,
+    companyNames,
+    selectedCompanyName,
+    selectedCompany,
+    companyCodes
+  });
   const [exporting, setExporting] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
@@ -210,6 +239,9 @@ function Dashboard() {
     converted: selectedAdminStatus || undefined,
     client: selectedClient || undefined,
     companyName: selectedCompanyName || undefined,
+    companyCode: selectedCompanyCode || undefined,
+    createdBy: selectedCreatedBy || undefined,
+    companyStage: selectedCompanyStage || undefined,
   });
 
   // Update quotation status mutation
@@ -326,6 +358,11 @@ function Dashboard() {
     setToMonth("");
     setSelectedQuotationStatus("");
     setSelectedAdminStatus("");
+    setSelectedClient("");
+    setSelectedCompanyName("");
+    setSelectedCompanyCode("");
+    setSelectedCreatedBy("");
+    setSelectedCompanyStage("");
     setCurrentPage(1);
     setIsFilterOpen(false);
   };
@@ -346,8 +383,11 @@ function Dashboard() {
       if (selectedQuotationStatus) params.append('status', selectedQuotationStatus);
       if (selectedAdminStatus) params.append('converted', selectedAdminStatus);
       if (searchTerm) params.append('search', searchTerm);
-      if (selectedCompanyName) params.append('companyName', selectedCompanyName);
-      const url = `/api/quotations/export/excel${params.toString() ? `?${params.toString()}` : ''}`;
+          if (selectedCompanyName) params.append('companyName', selectedCompanyName);
+    if (selectedCompanyCode) params.append('companyCode', selectedCompanyCode);
+    if (selectedCreatedBy) params.append('createdBy', selectedCreatedBy);
+    if (selectedCompanyStage) params.append('companyStage', selectedCompanyStage);
+    const url = `/api/quotations/export/excel${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await apiClient.get(url, {
         responseType: 'blob',
       });
@@ -638,121 +678,119 @@ function Dashboard() {
         <>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-4">
-            {/* Total Clients */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-green-100 text-green-600">
-                  <Users className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Total Clients
-                  </h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading ? "..." : dashboardStats.totalClients}
-                  </p>
-                </div>
-              </div>
-            </div>
+            {(() => {
+              // Define all cards data including the original 7 and 5 additional blank cards
+              const cardsData = [
+                // Original 7 cards
+                {
+                  title: "Total Clients",
+                  value: dashboardStatsLoading ? "..." : dashboardStats.totalClients,
+                  icon: Users,
+                  iconBgColor: "bg-green-100",
+                  iconColor: "text-green-600"
+                },
+                {
+                  title: "Engaged Clients",
+                  value: dashboardStatsLoading ? "..." : (dashboardStats.totalEngagedClients ?? 'N/A'),
+                  icon: UserPlus,
+                  iconBgColor: "bg-blue-100",
+                  iconColor: "text-blue-600"
+                },
+                {
+                  title: "Pending Approval",
+                  value: dashboardStatsLoading ? "..." : dashboardStats.pendingApprovals,
+                  icon: Clock,
+                  iconBgColor: "bg-yellow-100",
+                  iconColor: "text-yellow-600"
+                },
+                {
+                  title: "Under Discussion",
+                  value: dashboardStatsLoading ? "..." : dashboardStats?.underDevelopment,
+                  icon: AlertCircle,
+                  iconBgColor: "bg-blue-100",
+                  iconColor: "text-blue-600"
+                },
+                {
+                  title: "Booked",
+                  value: dashboardStatsLoading ? "..." : dashboardStats.booked,
+                  icon: CheckCircle,
+                  iconBgColor: "bg-green-100",
+                  iconColor: "text-green-600"
+                },
+                {
+                  title: "Lost",
+                  value: dashboardStatsLoading ? "..." : dashboardStats.lost,
+                  icon: XCircle,
+                  iconBgColor: "bg-red-100",
+                  iconColor: "text-red-600"
+                },
+                {
+                  title: "Total Quotations",
+                  value: dashboardStatsLoading ? "..." : dashboardStats.totalQuotations,
+                  icon: DollarSign,
+                  iconBgColor: "bg-primary-light",
+                  iconColor: "text-primary-dark"
+                },
+                // Additional 5 blank cards
+                {
+                  title: "Card 8",
+                  value: "-",
+                  icon: null,
+                  iconBgColor: "bg-gray-100",
+                  iconColor: "text-gray-600"
+                },
+                {
+                  title: "Card 9",
+                  value: "-",
+                  icon: null,
+                  iconBgColor: "bg-gray-100",
+                  iconColor: "text-gray-600"
+                },
+                {
+                  title: "Card 10",
+                  value: "-",
+                  icon: null,
+                  iconBgColor: "bg-gray-100",
+                  iconColor: "text-gray-600"
+                },
+                {
+                  title: "Card 11",
+                  value: "-",
+                  icon: null,
+                  iconBgColor: "bg-gray-100",
+                  iconColor: "text-gray-600"
+                },
+                {
+                  title: "Card 12",
+                  value: "-",
+                  icon: null,
+                  iconBgColor: "bg-gray-100",
+                  iconColor: "text-gray-600"
+                }
+              ];
 
-            {/* Engaged Clients (static) */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                  <UserPlus className="w-6 h-6" />
+              return cardsData.map((card, index) => (
+                <div key={index} className="bg-white p-6 rounded-lg shadow">
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-full ${card.iconBgColor} ${card.iconColor}`}>
+                      {card.icon ? (
+                        <card.icon className="w-6 h-6" />
+                      ) : (
+                        <div className="w-6 h-6"></div>
+                      )}
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-sm font-medium text-gray-500">
+                        {card.title}
+                      </h3>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {card.value}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Engaged Clients
-                  </h3>
-                  
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading
-                      ? "..."
-                      : (dashboardStats.totalEngagedClients ?? 'N/A')}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Pending Approval */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Pending Approval
-                  </h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading ? "..." : dashboardStats.pendingApprovals}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Under Discussion (static) */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                  <AlertCircle className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Under Discussion
-                  </h3>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardStatsLoading ? "..." : dashboardStats?.underDevelopment}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Booked */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-green-100 text-green-600">
-                  <CheckCircle className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">Booked</h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading ? "..." : dashboardStats.booked}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Lost */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-red-100 text-red-600">
-                  <XCircle className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">Lost</h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading ? "..." : dashboardStats.lost}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Quotations (at the end) */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-primary-light text-primary-dark">
-                  <DollarSign className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Total Quotations
-                  </h3>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {dashboardStatsLoading ? "..." : dashboardStats.totalQuotations}
-                  </p>
-                </div>
-              </div>
-            </div>
+              ));
+            })()}
           </div>
 
           {/* Improved Filters */}
@@ -903,15 +941,84 @@ function Dashboard() {
                     value={selectedCompanyName}
                     onChange={e => {
                       setSelectedCompanyName(e.target.value);
+                      setSelectedCompanyCode(""); // Reset company code when company name changes
                       setCurrentPage(1);
                     }}
                     disabled={companyNamesLoading || quotationsLoading}
                     className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">All Companies</option>
-                    {companyNames.map(name => (
+                    <option value="">Select Company</option>
+                    {companyNames.map((name: string) => (
                       <option key={name} value={name}>{name}</option>
                     ))}
+                  </select>
+                </div>
+
+                {/* Company Code Filter */}
+                <div>
+                  <label htmlFor="company-code" className="block text-sm font-medium text-gray-700 mb-1">
+                    Company Code
+                  </label>
+                  <select
+                    id="company-code"
+                    value={selectedCompanyCode}
+                    onChange={e => {
+                      setSelectedCompanyCode(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={quotationsLoading}
+                    className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select Company Code</option>
+                    {companyCodes.map((code: string) => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Created By Filter */}
+                <div>
+                  <label htmlFor="created-by" className="block text-sm font-medium text-gray-700 mb-1">
+                    Created By
+                  </label>
+                  <select
+                    id="created-by"
+                    value={selectedCreatedBy}
+                    onChange={e => {
+                      setSelectedCreatedBy(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={usersLoading || quotationsLoading}
+                    className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">All Users</option>
+                    {users.map(user => (
+                      <option key={user._id} value={user._id}>{user.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Company Stage Filter */}
+                <div>
+                  <label htmlFor="company-stage" className="block text-sm font-medium text-gray-700 mb-1">
+                    Company Stage
+                  </label>
+                  <select
+                    id="company-stage"
+                    value={selectedCompanyStage}
+                    onChange={e => {
+                      setSelectedCompanyStage(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    disabled={quotationsLoading}
+                    className="w-full h-[38px] rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="">All Stages</option>
+                    <option value="foundation">Foundation</option>
+                    <option value="building">Building</option>
+                    <option value="running">Running</option>
+                    <option value="finished">Finished</option>
+                    <option value="closed">Closed</option>
                   </select>
                 </div>
               </div>
@@ -920,6 +1027,11 @@ function Dashboard() {
                 toMonth ||
                 selectedQuotationStatus ||
                 selectedAdminStatus ||
+                selectedClient ||
+                selectedCompanyName ||
+                selectedCompanyCode ||
+                selectedCreatedBy ||
+                selectedCompanyStage ||
                 searchTerm) && (
                 <div className="flex items-end">
                   <button
@@ -938,6 +1050,11 @@ function Dashboard() {
               toMonth ||
               selectedQuotationStatus ||
               selectedAdminStatus ||
+              selectedClient ||
+              selectedCompanyName ||
+              selectedCompanyCode ||
+              selectedCreatedBy ||
+              selectedCompanyStage ||
               searchTerm) && (
               <div className="mt-4 p-3 bg-primary-bg border border-primary-light rounded-md">
                 <div className="flex items-center">
@@ -949,6 +1066,11 @@ function Dashboard() {
                       (fromMonth || toMonth) && "Month Range",
                       selectedQuotationStatus && "Status",
                       selectedAdminStatus && "Conversion Status",
+                      selectedClient && "Client",
+                      selectedCompanyName && "Company Name",
+                      selectedCompanyCode && "Company Code",
+                      selectedCreatedBy && "Created By",
+                      selectedCompanyStage && "Company Stage",
                     ]
                       .filter(Boolean)
                       .join(", ")}

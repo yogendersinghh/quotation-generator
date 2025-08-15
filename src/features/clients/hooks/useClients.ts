@@ -9,6 +9,7 @@ type UseClientsOptions = {
   sortOrder?: 'asc' | 'desc';
   search?: string;
   companyName?: string;
+  companyCode?: string;
 };
 
 export const useClients = (options: UseClientsOptions = {}) => {
@@ -19,11 +20,12 @@ export const useClients = (options: UseClientsOptions = {}) => {
     sortOrder = 'desc',
     search,
     companyName,
+    companyCode,
   } = options;
 
   return useQuery<ClientsResponse, Error>({
-    queryKey: ['clients', { page, limit, sortBy, sortOrder, search, companyName }],
-    queryFn: () => clientsApi.getClients({ page, limit, sortBy, sortOrder, search, companyName }),
+    queryKey: ['clients', { page, limit, sortBy, sortOrder, search, companyName, companyCode }],
+    queryFn: () => clientsApi.getClients({ page, limit, sortBy, sortOrder, search, companyName, companyCode }),
     retry: false,
   });
 };
