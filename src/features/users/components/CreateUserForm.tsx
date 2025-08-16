@@ -60,7 +60,7 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Create New User</h2>
+          <h2 className="text-2xl font-bold">Create New Employee</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={24} />
           </button>
@@ -153,7 +153,7 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
           </div>
 
           <div>
-            <label htmlFor="userStatus" className="block text-sm font-medium text-gray-700">User Status</label>
+            <label htmlFor="userStatus" className="block text-sm font-medium text-gray-700">Employee Status</label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <CheckCircle2 className="h-5 w-5 text-gray-400" />
@@ -179,7 +179,7 @@ export const CreateUserForm = ({ onClose }: CreateUserFormProps) => {
             className="bg-[#F7931E] text-white px-4 py-2 rounded font-medium hover:bg-orange-600 transition-colors w-full flex justify-center"
             disabled={isPending}
           >
-            {isPending ? 'Creating user...' : 'Create User'}
+            {isPending ? 'Creating employee...' : 'Create Employee'}
           </button>
         </form>
       </div>

@@ -14,9 +14,9 @@ function Layout() {
     { name: 'Product', href: '/products', icon: Package, roles: ['admin', 'manager'] },
     // { name: 'Categories', href: '/categories', icon: FolderPlus, roles: ['admin', 'manager'] },
     // { name: 'Models', href: '/models', icon: Package, roles: ['admin', 'manager'] },
-    { name: 'Customers Info', href: '/customers', icon: UsersIcon, roles: ['admin', 'manager'] },
+    { name: 'Company Info', href: '/customers', icon: UsersIcon, roles: ['admin', 'manager'] },
     { name: 'Create Quotations', href: '/quotations', icon: FileText, roles: ['admin', 'manager'] },
-    { name: 'Users', href: '/users', icon: UsersIcon, roles: ['admin'] },
+    { name: 'Employee\'s', href: '/users', icon: UsersIcon, roles: ['admin'] },
     { name: 'Default Formal Text', href: '/default-formal-text', icon: FileText, roles: ['admin'] },
   ];
 

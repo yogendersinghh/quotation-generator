@@ -324,12 +324,12 @@ function Users() {
     <div className="">
       {/* Header with "Users" title and "Add User" button - ALWAYS VISIBLE */}
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Users</h1>
+        <h1 className="text-3xl font-bold">Employee's</h1>
         <button
           className="bg-[#F7931E] hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-colors"
           onClick={() => setShowCreateUserModal(true)}
         >
-          <Plus className="mr-2" size={20} /> Add User
+          <Plus className="mr-2" size={20} /> Add Employee
         </button>
       </div>
 
@@ -337,8 +337,8 @@ function Users() {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <SearchBar
           placeholder={data.users.length === 0 && !debouncedSearchQuery
-            ? "Add users to enable search"
-            : "Search users by name..."
+            ? "Add employee's to enable search"
+            : "Search employee's by name..."
           }
           onSearch={setSearchQuery}
           debounceMs={500}
@@ -368,7 +368,7 @@ function Users() {
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center mx-auto transition-colors duration-200"
                 onClick={() => setShowCreateUserModal(true)}
               >
-                <Plus className="mr-2" size={20} /> Add Your First User
+                <Plus className="mr-2" size={20} /> Add Your First Employee
               </button>
             </div>
           </div>
@@ -377,9 +377,9 @@ function Users() {
           <div className="flex items-center justify-center">
             <div className="text-center bg-white p-8 rounded-lg shadow-md w-full">
               <Search className="w-24 h-24 text-gray-400 mx-auto mb-6 bg-gray-50 p-4 rounded-full" />
-              <h2 className="text-2xl font-bold mb-2 text-gray-800">No Users Found</h2>
+              <h2 className="text-2xl font-bold mb-2 text-gray-800">No Employee's Found</h2>
               <p className="text-gray-600 mb-6">
-                No users found matching "{debouncedSearchQuery}". Try a different search term or clear the search.
+                No employee's found matching "{debouncedSearchQuery}". Try a different search term or clear the search.
               </p>
               <button
                 onClick={handleClearSearch}
@@ -402,27 +402,27 @@ function Users() {
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort('name')}
                   >
-                    USER <SortIcon field="name" />
+                    Employee Email <SortIcon field="name" />
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort('name')}
                   >
-                    NAME <SortIcon field="name" />
+                    Employee Name <SortIcon field="name" />
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort('role')}
                   >
-                    ROLE <SortIcon field="role" />
+                    Employee Role <SortIcon field="role" />
                   </th>
                   <th
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    STATUS
+                    Employee Status
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ACTIONS
+                    Employee Actions
                   </th>
                 </tr>
               </thead>
@@ -474,7 +474,7 @@ function Users() {
                                 className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors focus:outline-none focus:bg-gray-100"
                               >
                                 <Edit2 className="h-4 w-4 mr-3 text-blue-500" />
-                                Edit User
+                                Edit Employee
                               </button>
                               <div className="border-t border-gray-100"></div>
                               <button
@@ -482,7 +482,7 @@ function Users() {
                                 className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors focus:outline-none focus:bg-red-50"
                               >
                                 <Trash2 className="h-4 w-4 mr-3 text-red-500" />
-                                Delete User
+                                Delete Employee
                               </button>
                             </div>
                           </div>
@@ -527,7 +527,7 @@ function Users() {
                 </span>
               ) : (
                 <span>
-                  Showing {data.users.length} of {data.pagination.total} users
+                  Showing {data.users.length} of {data.pagination.total} employee's
                 </span>
               )}
             </div>
